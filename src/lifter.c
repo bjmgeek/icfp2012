@@ -22,9 +22,10 @@ void space_pad (char *st,int n){
 		st[i]=' ';
 }
 
-world read_map()
-{
-    /* returns a newly allocated array of (newly allocated) strings */
+world read_map() {
+	/* create a world , and allocate the array of strings 
+     * for its buffer */
+
     world w={NULL,0,0};
     char **buf=NULL;
     char *line=NULL;
@@ -43,6 +44,8 @@ world read_map()
             max_len=strlen(line);
         }
     }
+
+    free(line);
 
     w.buf=buf;
     w.y_size=line_no;
@@ -72,8 +75,7 @@ void last_second(){
     }
 }
 
-void sig_handler(int signum)
-{
+void sig_handler(int signum) {
     if (signum==SIGINT){
         fprintf(stderr,"caught SIGINT\n");
         alarm(9);
@@ -83,8 +85,7 @@ void sig_handler(int signum)
     }
 }
 
-int main()
-{
+int main() {
     world w=read_map();
     int x=0;
 
