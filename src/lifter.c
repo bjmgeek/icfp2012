@@ -33,6 +33,16 @@ void space_pad (char *st,int n){
 		st[i]=' ';
 }
 
+int count_lambdas() {
+    int x,y;
+    int count=0;
+    for (y=0; y<map.y_size; y++)
+        for (x=0; x<map.x_size; x++)
+            if (map.buf[y][x]=='\\')
+                count++;
+    return count;
+}
+
 /* populate the global world variable, and allocate the array of 
  * strings for its buffer */
 void read_map(FILE *f) {
@@ -59,6 +69,7 @@ void read_map(FILE *f) {
     map.buf=buf;
     map.y_size=line_no;
     map.x_size=max_len;
+    map.initial_lambdas=count_lambdas();
 
     /* The width of the mine is the number of characters in the longest line.  
      * shorter lines are assumed to be padded out with spaces */
@@ -78,7 +89,6 @@ void read_map(FILE *f) {
         map.flooding=0;
         lLifter.waterproof=0;
     }
-
 }
 
 /* find the robot on the map, and populate the global robot variable */
@@ -365,6 +375,8 @@ int main(int argc,char **argv) {
                 fprintf(stderr,"robot broken\n");
                 exit (EXIT_FAILURE);
             }
+        fprintf(stderr,"robot exceeded maximum number of moves\n");
+        exit(EXIT_FAILURE);
         }
     } else if (argc==1) {
         read_map(stdin);
@@ -375,6 +387,8 @@ int main(int argc,char **argv) {
             fflush(stdout);
             update_map(move);
         }
+        fprintf(stderr,"robot exceeded maximum number of moves\n");
+        exit(EXIT_FAILURE);
     } else {
         fprintf(stderr,"usage: %s\n%s <file> -i\n",argv[0],argv[0]);
         exit (EXIT_FAILURE);
