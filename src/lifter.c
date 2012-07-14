@@ -438,7 +438,7 @@ int main(int argc,char **argv) {
             print_map();
             move=move_robot();
             fprintf(stderr,"about to execute move: %c\n",move);
-            fprintf(stderr,"press enter: ");
+            fprintf(stderr,"press enter:\n");
             getchar();
             if (update_map(move)==-1) {
                 fprintf(stderr,"robot broken\n");
