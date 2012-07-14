@@ -11,6 +11,7 @@ typedef struct {
     int lambdas;
     int waterproof;
     int water_steps;
+    int razors;
 } robot;
 
 typedef struct {
@@ -27,6 +28,7 @@ typedef struct {
     int flooding;
     trampoline *tramps;
     int num_tramps;
+    int growth;
 } world;
 
 
@@ -66,6 +68,7 @@ int count_lambdas() {
 int get_metadata(char ** buf,int num_lines) {
     int i;
     int count=0;
+    map.growth=25; /* the default if not specified in the input */
     for (i=0; i< num_lines; i++) {
         if (strstr(buf[i],"Water ") != NULL) {
             sscanf(buf[i],"Water %d",&(map.water));
@@ -80,10 +83,17 @@ int get_metadata(char ** buf,int num_lines) {
             count++;
         }
         if (strstr(buf[i],"Trampoline") != NULL) {
-            fprintf(stderr,"found trampoline\n");
             map.tramps=realloc(map.tramps,(1 + map.num_tramps) * sizeof (trampoline));
             sscanf(buf[i],"Trampoline %c targets %d",&(map.tramps[map.num_tramps].source),&(map.tramps[map.num_tramps].target));
             map.num_tramps++;
+            count++;
+        }
+        if (strstr(buf[i],"Growth") != NULL) {
+            sscanf(buf[i],"Growth %d",&(map.growth));
+            count++;
+        }
+        if (strstr(buf[i],"Razors ") != NULL) {
+            sscanf(buf[i],"Razors %d",&(lLifter.razors));
             count++;
         }
     }
