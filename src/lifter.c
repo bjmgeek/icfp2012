@@ -15,6 +15,7 @@ typedef struct {
     char ** buf;
     int x_size;
     int y_size;
+    int inital_lambdas;
 } world;
 
 /* global variables */
@@ -202,6 +203,9 @@ int update_map(char robot_dir) {
 			}
 		}
 	
+	if(lambda_count != map.inital_lambdas - lLifter.lambdas)
+		fprintf(stderr, "incorrect lambda count");
+	
 	/* if all the lambdas are collected, the lift opens */	
 	if(lambda_count == 0)
 		map.buf[lift_y][lift_x] = 'O';
@@ -209,6 +213,68 @@ int update_map(char robot_dir) {
     print_map();
 	return movement_result;	
 }	
+
+/* tells the robot where to move next 
+ * currently: moves towards the closest lambda or the exit
+ * needs to: 
+ *  - look for falling rocks
+ *  - know how to push rocks
+ *  - get out of the water before drowning
+ *  - strategize getting complicated lambdas
+ * */
+char move_robot()
+{
+	int U = 0, D = 0, L = 0, R = 0;
+	/* recursively check all 4 directions for closest safe lambda or exit*/
+	R = search(lLifter.y, lLifter.x+1, 0, 'R');
+	L = search(lLifter.y, lLifter.x-1, 0, 'L');
+	U = search(lLifter.y-1, lLifter.x, 0, 'U');
+	D = search(lLifter.y+1, lLifter.x, 0, 'D');
+	
+	if(R > 0 && R < U && R < D && R < L)
+		return 'R';
+	if(L > 0 && L < U && L < D)
+		return 'L';
+	if(U > 0 && U < D)
+		return 'U';
+	if(D > 0)
+		return 'D';
+	return 'W';	
+}
+
+int search(int y, int x, int steps, char dir)
+{
+	int min_steps = steps, test_steps = steps;
+	/* if unsafe location or too many steps(more than 10), return steps */
+	if(map.buf[y][x] == '#' || map.buf[y][x] = '*' || steps > 20)
+		return 0;
+	
+	/* if lambda or exit(& no lambdas left), return steps +1 */
+	if(map.buf[y][x] == '\\' || (map.inital_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
+		return steps +1;
+	
+	/* else search */
+	int U = 0, D = 0, L = 0, R = 0;
+	/* recursively check all 4 directions for closest safe lambda or exit*/
+	if(dir != 'R') {
+		test_steps = search(lLifter.y, lLifter.x+1, steps + 1, 'R');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'L') {
+		test_steps = search(lLifter.y, lLifter.x-1, steps + 1, 'L');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'U') {
+		test_steps = search(lLifter.y-1, lLifter.x, steps + 1, 'U');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'D') {
+		test_steps = search(lLifter.y+1, lLifter.x, steps + 1, 'D');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	return min_steps;
+}
+
 
 
 /* calculate the score if we abort now */
