@@ -245,10 +245,13 @@ int update_map(char robot_dir) {
 
 int search(int y, int x, int steps, char dir)
 {
-	int min_steps = steps, test_steps = steps;
+	int min_steps = 21, test_steps;
+	
+	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
+	
 	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] == '*' || steps > 20)
-		return 0;
+	if(map.buf[y][x] == '#' || map.buf[y][x] == '*' || map.buf[y][x] == 'L' || steps > 20 )
+		return 21;
 	
 	/* if lambda or exit(& no lambdas left), return steps +1 */
 	if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
@@ -256,20 +259,20 @@ int search(int y, int x, int steps, char dir)
 	
 	/* else search */
 	/* recursively check all 4 directions for closest safe lambda or exit*/
-	if(dir != 'R') {
-		test_steps = search(lLifter.y, lLifter.x+1, steps + 1, 'R');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
 	if(dir != 'L') {
-		test_steps = search(lLifter.y, lLifter.x-1, steps + 1, 'L');
+		test_steps = search(y, x+1, steps + 1, 'R');
 		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 	}
-	if(dir != 'U') {
-		test_steps = search(lLifter.y-1, lLifter.x, steps + 1, 'U');
+	if(dir != 'R') {
+		test_steps = search(y, x-1, steps + 1, 'L');
 		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 	}
 	if(dir != 'D') {
-		test_steps = search(lLifter.y+1, lLifter.x, steps + 1, 'D');
+		test_steps = search(y-1, x, steps + 1, 'U');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'U') {
+		test_steps = search(y+1, x, steps + 1, 'D');
 		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 	}
 	return min_steps;
@@ -292,13 +295,15 @@ char move_robot()
 	U = search(lLifter.y-1, lLifter.x, 0, 'U');
 	D = search(lLifter.y+1, lLifter.x, 0, 'D');
 	
-	if(R > 0 && R < U && R < D && R < L)
+	fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);
+	
+	if(R < 21 && R < U && R < D && R < L)
 		return 'R';
-	if(L > 0 && L < U && L < D)
+	if(L < 21 && L < U && L < D)
 		return 'L';
-	if(U > 0 && U < D)
+	if(U < 21 && U < D)
 		return 'U';
-	if(D > 0)
+	if(D < 21)
 		return 'D';
 	return 'W';	
 }
