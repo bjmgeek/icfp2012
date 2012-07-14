@@ -35,6 +35,14 @@ robot lLifter;
 world map;
 const int LONGEST_PATH=21;
 
+/* calculate the score of a success */
+int calc_success_score() {
+	/* need to keep track of how many lambdas we've picked up already
+   * need to keep track of how many steps we've taken 
+   * score = lambdas * 75 - steps
+   */
+    return (lLifter.lambdas * 75) - lLifter.steps;
+}
 /* pad the map with spaces */
 void space_pad (char *st,int n){
 	int i;
@@ -217,7 +225,7 @@ int update_map(char robot_dir) {
 	}
 	else if(map.buf[y_prime][x_prime] == 'O')
 	{
-		fprintf(stderr," Yay, we made it!\n");
+		fprintf(stderr," SUCCESS! score: %d \n",calc_success_score());
 		exit(EXIT_SUCCESS);
 	}
 	/* else if the robot is trying to move, and the move is valid move the robot */	
@@ -373,7 +381,7 @@ int search(int y, int x, int steps, char dir)
  * */
 char move_robot()
 {
-	int U = LONGEST_PATH, D = LONGEST_PATH, L = LONGEST_PATH, R = LONGEST_PATH;
+	int U = LONGEST_PATH, D = LONGEST_PATH, L = LONGEST_PATH, R = LONGEST_PATH, x, y;
 	/* recursively check all 4 directions for closest safe lambda or exit*/
 	R = search(lLifter.y, lLifter.x+1, 0, 'R');
 	L = search(lLifter.y, lLifter.x-1, 0, 'L');
@@ -398,7 +406,25 @@ char move_robot()
 	if(map.buf[lLifter.y][lLifter.x-1] == '*' && map.buf[lLifter.y][lLifter.x-2] == ' ')
 		return 'L';
 		
-	return 'W';	
+	/* if robot still can't move check for falling rocks */
+	for(y = 0; y < map.y_size; y++)
+		for(x = 0; x < map.x_size; x++)
+		{
+			if(map.buf[y][x] == '*')
+			{	/* unsupported rocks fall, wait to see if it opens a path */
+				if(map.buf[y+1][x] == ' ')
+					return 'W';
+				/* balanced rocks slide, wait to see if it opens a path */
+				else if((map.buf[y+1][x] == '*' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ') ||
+					(map.buf[y+1][x] == '*' && map.buf[y][x-1] == ' ' && map.buf[y+1][x-1] == ' ') ||
+					(map.buf[y+1][x] == '\\' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' '))
+					return 'W';
+				
+			}
+		}
+	
+	/* if map is stable, and there is nowhere to go, abort */
+	return 'A';
 }
 
 
@@ -420,7 +446,8 @@ void last_second(){
     if (calc_abort_score() > 0) {
         fprintf(stderr,"sending abort instruction\n");
         putchar('A');
-        fflush(stdout);
+        fprintf(stderr,"score: %d \n",calc_abort_score());
+		fflush(stdout);
         exit(EXIT_SUCCESS);
     }
     else {
@@ -473,7 +500,12 @@ int main(int argc,char **argv) {
             move=move_robot();
             putchar(move);
             fflush(stdout);
-            if (update_map(move)==-1) {
+            if(move == 'A')
+            {
+				fprintf(stderr,"score: %d \n",calc_abort_score());
+				exit(EXIT_SUCCESS);
+			}
+            else if (update_map(move)==-1) {
                 fprintf(stderr," robot broken\n");
                 exit (EXIT_FAILURE);
             }
