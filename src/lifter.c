@@ -257,7 +257,7 @@ int update_map(char robot_dir) {
 }	
 
 
-
+/* keeps track of where it came from for more efficent searching */
 int search(int y, int x, int steps, char dir)
 {
 	int min_steps = 21, test_steps;
@@ -265,30 +265,42 @@ int search(int y, int x, int steps, char dir)
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
 	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] == '*' || map.buf[y][x] == 'L' || steps > 20 )
+	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > 20 )
 		return 21;
-	
-	/* if lambda or exit(& no lambdas left), return steps +1 */
-	if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
-		return steps +1;
-	
-	/* else search */
-	/* recursively check all 4 directions for closest safe lambda or exit*/
-	if(dir != 'L') {
-		test_steps = search(y, x+1, steps + 1, 'R');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	/* check to see if rocks could be moved */
+	if(map.buf[y][x] == '*')
+	{
+		if(dir == 'L' && map.buf[y][x-1] == ' ')
+			min_steps = search(y, x-1, steps+1, 'L');
+		else if(dir == 'R' && map.buf[y][x+1] == ' ')
+			min_steps = search(y, x+1, steps+1, 'R');
+		else
+			return 21;
 	}
-	if(dir != 'R') {
-		test_steps = search(y, x-1, steps + 1, 'L');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	if(dir != 'D') {
-		test_steps = search(y-1, x, steps + 1, 'U');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	if(dir != 'U') {
-		test_steps = search(y+1, x, steps + 1, 'D');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	else
+	{
+		/* if lambda or exit(& no lambdas left), return steps +1 */
+		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
+			return steps +1;
+		
+		/* else search */
+		/* recursively check all 4 directions for closest safe lambda or exit*/
+		if(dir != 'L') {
+			test_steps = search(y, x+1, steps + 1, 'R');
+			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'R') {
+			test_steps = search(y, x-1, steps + 1, 'L');
+			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'D') {
+			test_steps = search(y-1, x, steps + 1, 'U');
+			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'U') {
+			test_steps = search(y+1, x, steps + 1, 'D');
+			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		}
 	}
 	return min_steps;
 }
