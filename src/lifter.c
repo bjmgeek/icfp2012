@@ -15,6 +15,13 @@ typedef struct {
     int y_size;
 } world;
 
+
+void space_pad (char *st,int n){
+	int i;
+	for (i=strlen(st); i<n; i++)
+		st[i]=' ';
+}
+
 world read_map()
 {
     /* returns a newly allocated array of (newly allocated) strings */
@@ -40,6 +47,14 @@ world read_map()
     w.buf=buf;
     w.y_size=line_no;
     w.x_size=max_len;
+
+    /* The width of the mine is the number of characters in the longest line.  
+     * shorter lines are assumed to be padded out with spaces */
+    for (n=0;n<w.y_size;n++) {
+        w.buf[n]=realloc(w.buf[n],max_len * sizeof (char*));
+        space_pad(w.buf[n],max_len);
+    }
+
     return w;
 }
 
@@ -77,11 +92,12 @@ int main()
     signal(SIGALRM,sig_handler);
 
 
-    while (1){
-        x++;
-    }
+
 
     fprintf(stderr,"x: %d y: %d\n",w.x_size,w.y_size);
+    for (x=0; x<w.y_size;x++) {
+        fprintf(stderr,"%d \"%s\"\n",x,w.buf[x]);
+    }
 
     return EXIT_SUCCESS;
 }
