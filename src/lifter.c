@@ -20,6 +20,11 @@ typedef struct {
 } trampoline;
 
 typedef struct {
+	int x;
+	int y;
+} point;
+
+typedef struct {
     char ** buf;
     int x_size;
     int y_size;
@@ -192,7 +197,8 @@ int update_map(char robot_dir) {
 	int x_prime = lLifter.x, y_prime=lLifter.y;
 	int movement_result = 0;
 	int lambda_count = 0, lift_x = -1, lift_y = -1;
-	int x,y;
+	int x,y,i;
+	int robot_target = 0;
 	
 	switch(robot_dir) {
 		case 'D': y_prime ++; break;
@@ -233,6 +239,13 @@ int update_map(char robot_dir) {
 		else
 			movement_result = 0;
 	}
+	/* if robot is trying to use a trampoline, jump */
+	else if(map.buf[y_prime][x_prime] >= 'A' && map.buf[y_prime][x_prime] <= 'I')
+	{
+		for(i=0;i<map.num_tramps;i++)
+			if(map.tramps[i].source == map.buf[y_prime][x_prime])
+				robot_target = map.tramps[i].target;
+	}	
 	else if(map.buf[y_prime][x_prime] == 'O')
 	{
 		fprintf(stderr," SUCCESS! score: %d \n",calc_success_score());
@@ -259,12 +272,21 @@ int update_map(char robot_dir) {
 		for(x = 0; x < map.x_size; x++)
 		{
 			if(map.buf[y][x] == '\\') lambda_count ++;
-			if(map.buf[y][x] == 'L' || map.buf[y][x] == 'O')
+			else if(map.buf[y][x] == 'L' || map.buf[y][x] == 'O')
 			{
 				lift_x = x;
 				lift_y = y;
 			}
-			if(map.buf[y][x] == '*')
+			else if(map.buf[y][x] >= 'A' && map.buf[y][x] <= 'I')
+			{
+				/* trampolines with used targets disappear */
+				for(i=0;i<map.num_tramps;i++)
+					if(map.tramps[i].source == map.buf[y][x] && map.tramps[i].target == robot_target)
+						map.buf[y][x] = ' ';
+			}	
+			else if(map.buf[y][x] == robot_target)
+				map.buf[y][x] = 'R';
+			else if(map.buf[y][x] == '*')
 			{	/* unsupported rocks fall */
 				if(map.buf[y+1][x] == ' ')
 				{
