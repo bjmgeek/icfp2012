@@ -17,7 +17,7 @@ typedef struct {
     char ** buf;
     int x_size;
     int y_size;
-    int inital_lambdas;
+    int initial_lambdas;
     int water;
     int flooding;
 } world;
@@ -103,6 +103,7 @@ int x;
     }
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
     fprintf(stderr,"water level: %d\n",map.water);
+    fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
 }
 
 
@@ -221,11 +222,11 @@ int update_map(char robot_dir) {
 			}
 		}
 		
-	if(lambda_count != map.inital_lambdas - lLifter.lambdas)
+	if(lambda_count != map.initial_lambdas - lLifter.lambdas)
 		fprintf(stderr, "incorrect lambda count");
 
     /* increase flooding if necessary */
-    if ((lLifter.steps % map.flooding)==0)
+    if ((map.flooding > 0) && (lLifter.steps % map.flooding)==0)
         map.water++;
     if (lLifter.y >= (map.y_size - map.water))
         lLifter.water_steps++;
@@ -249,7 +250,7 @@ int search(int y, int x, int steps, char dir)
 		return 0;
 	
 	/* if lambda or exit(& no lambdas left), return steps +1 */
-	if(map.buf[y][x] == '\\' || (map.inital_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
+	if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
 		return steps +1;
 	
 	/* else search */
@@ -313,11 +314,20 @@ int calc_abort_score() {
 }
 
 void last_second(){
+    int score = calc_abort_score();
     /* if score is positive (or would be with the bonus), send Abort command */
     fprintf(stderr,"checking for last second abort\n");
+    fprintf(stderr,"current score: %d score if abort: %d\n",lLifter.lambdas *25 - lLifter.steps, score);
     if (calc_abort_score() > 0) {
+        fprintf(stderr,"sending abort instruction\n");
         putchar('A');
         fflush(stdout);
+        exit(EXIT_SUCCESS);
+    }
+    else {
+        fprintf(stderr,"score too low, not aborting\n");
+        sleep(2); /* use up the clock */
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -351,11 +361,17 @@ int main(int argc,char **argv) {
     } else if (argc==1) {
         read_map(stdin);
         init_robot();
-        while (true) {
+        while (1) {
             move=move_robot();
             putchar(move);
+            fflush(stdout);
             update_map(move);
         }
+    } else {
+        fprintf(stderr,"usage: %s\n%s <file> -i\n",argv[0],argv[0]);
+        exit (EXIT_FAILURE);
+    }
+
 
 
     return EXIT_SUCCESS;
