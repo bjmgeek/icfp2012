@@ -355,7 +355,7 @@ int main(int argc,char **argv) {
         infile=fopen(argv[1],"r");
         read_map(infile);
         init_robot();
-        while (1) {
+        while (lLifter.steps < (map.x_size * map.y_size)) {
             print_map();
             move=move_robot();
             fprintf(stderr,"about to execute move: %c\n",move);
@@ -369,7 +369,7 @@ int main(int argc,char **argv) {
     } else if (argc==1) {
         read_map(stdin);
         init_robot();
-        while (1) {
+        while (lLifter.steps < (map.x_size * map.y_size)) {
             move=move_robot();
             putchar(move);
             fflush(stdout);
