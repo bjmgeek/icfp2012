@@ -255,7 +255,7 @@ int update_map(char robot_dir) {
 	}
 	
 	/** update map */
-	for(y = 0; y < map.y_size; y++)
+	for(y = map.y_size -1; y >= 0; y--)
 		for(x = 0; x < map.x_size; x++)
 		{
 			if(map.buf[y][x] == '\\') lambda_count ++;
@@ -495,7 +495,12 @@ int main(int argc,char **argv) {
             move=move_robot();
             fprintf(stderr,"about to execute move: %c\n",move);
             fprintf(stderr,"press enter:\n");
-            getchar();
+            getchar();            
+            if(move == 'A')
+            {
+				fprintf(stderr," score: %d \n",calc_abort_score());
+				exit(EXIT_SUCCESS);
+			}
             if (update_map(move)==-1) {
                 fprintf(stderr," robot broken\n");
                 exit (EXIT_FAILURE);
@@ -512,7 +517,7 @@ int main(int argc,char **argv) {
             fflush(stdout);
             if(move == 'A')
             {
-				fprintf(stderr,"score: %d \n",calc_abort_score());
+				fprintf(stderr," score: %d \n",calc_abort_score());
 				exit(EXIT_SUCCESS);
 			}
             else if (update_map(move)==-1) {
