@@ -21,34 +21,31 @@ world read_map()
     char *line=NULL;
     size_t n=0;
     int line_no=0;
+    int max_len=0;
 
-    FILE *f;
-    f=fopen("contest7.map","r");
-
-    while (getline(&line,&n,f) != -1){
+    while (getline(&line,&n,stdin) != -1){
         /* replace newline with null */
         line[strchr(line,'\n')-line]='\0';
-        printf ("line: \"%s\"\n",line);
         buf=realloc(buf,(1+line_no) * sizeof (char*));
-        buf[line_no]=line;
-        printf("buf[%d]: \"%s\"\n",line_no,buf[line_no]);
+        buf[line_no]=calloc(strlen(line),sizeof (char*));
+	strcpy(buf[line_no],line);
         line_no++;
+	if (max_len < strlen(line))
+		max_len=strlen(line);
     }
 
     w.buf=buf;
     w.y_size=line_no;
+    w.x_size=max_len;
     return w;
 }
 
 int main()
 {
-    int y;
     world w;
     w=read_map();
 
-    printf("x: %d y: %d\n",w.x_size,w.y_size);
-    for (y=0;y<w.y_size;y++)
-        printf("w.buf[%d]: \"%s\"\n",y,w.buf[y]);
+    fprintf(stderr,"x: %d y: %d\n",w.x_size,w.y_size);
 
     return EXIT_SUCCESS;
 }
