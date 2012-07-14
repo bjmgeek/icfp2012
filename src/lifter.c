@@ -63,18 +63,99 @@ world read_map() {
     return w;
 }
 
-void update_map(char robot_dir) {
+/* updates map based on robot's movement
+ * returns 1 if move is successful
+ * returns 0 if move is unsuccessful
+ * returns -1 if robot dies
+ */
+int update_map(char robot_dir) {
 	int x_prime = lLifter.x, y_prime=lLifter.y;
+	int movement_result = 0;
 	
 	switch(robot_dir) {
-		case 'N': y_prime ++; break;
-		case 'S': y_prime --; break;
-		case 'E': x_prime ++; break;
-		case 'W': x_prime --; break;
+		case 'D': y_prime ++; break;
+		case 'U': y_prime --; break;
+		case 'R': x_prime ++; break;
+		case 'L': x_prime --; break;
 	}
 	
+	lLifter.steps ++;
 	
+	/** update robot */
 	
+	/* if the robot is trying to move off the map, WAIT */
+	if(x_prime >= x_size || x_prime < 0
+	  || y_prime >= y_size || y_prime < 0)
+	  movement_result = 0;
+	/* if a robot is trying to move a rock, move rock if there is an empty space behind the rock */
+	else if(map.buf[y_prime][x_prime] == '*' && (robot_dir == 'L' || robot_dir == 'R'))
+	{
+		if(robot_dir == 'L' && map.buf[y_prime][x_prime-1] == ' ')
+		{
+			map.buf[y_prime][x_prime-1] = '*';
+			map.buf[lLifter.y][lLifter.x] = ' ';
+			lLifter.y = y_prime;
+			lLifter.x = x_prime;
+			map.buf[lLifter.y][lLifter.x] = 'R';
+			movement_result = 1;
+		}
+		else if(robot_dir == 'R' && map.buf[y_prime][x_prime+1] == ' ')
+		{
+			map.buf[y_prime][x_prime+1] = '*';
+			map.buf[lLifter.y][lLifter.x] = ' ';
+			lLifter.y = y_prime;
+			lLifter.x = x_prime;
+			map.buf[lLifter.y][lLifter.x] = 'R';
+			movement_result = 1;
+		}
+		else
+			movement_result = 0;
+	}
+	/* else if the robot is trying to move, and the move is valid move the robot */	
+	else if((robot_dir == 'D' || robot_dir=='U' || robot_dir=='R' || robot_dir=='L') &&
+			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == 'O' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
+	{
+		map.buf[lLifter.y][lLifter.x] = ' ';
+		
+		/* if the robot is moving onto a lambda, pick it up */
+		if(map.buf[y_prime][x_prime] == '\\')
+			lLifter.lambdas ++;		
+		
+		lLifter.y = y_prime;
+		lLifter.x = x_prime;
+		map.buf[lLifter.y][lLifter.x] = 'R';
+		movement_result = 1;
+	}
+	
+	/** update map */
+	int lambda_count = 0, lift_x = -1; lift_y = -1;
+	for(int y = 0; y < map.y_size; y++)
+		for(int x = 0; x < map.x_size; x++)
+		{
+			if(map.buf[y][x] == '//') lambda_count ++;
+			if(map.buf[y][x] == 'L')
+			{
+				lift_x = x;
+				lift_y = y;
+			}
+			if(map.buf[y][x] == '*')
+			{	/* unsupported rocks fall */
+				if(map.buf[y+1][x] == ' ')
+				{
+					map.buf[y][x] = ' ';
+					map.buf[y+1][x] = '*';
+					/* falling rocks can kill robots */
+					if(map.buf[y+2][x] = 'R';
+						movement_result = -1;
+				}
+			}
+		}
+	
+	/* if all the lambdas are collected, the lift opens */	
+	if(lambda_count == 0)
+		map.buf[lift_y][lift_x] = 'O';
+	
+	return movement_result;	
 }	
 
 
