@@ -261,6 +261,7 @@ int main() {
 
 
 
+    print_map();
 
     return EXIT_SUCCESS;
 }
