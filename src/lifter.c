@@ -168,9 +168,14 @@ int update_map(char robot_dir) {
 		else
 			movement_result = 0;
 	}
+	else if(map.buf[y_prime][x_prime] == 'O')
+	{
+		fprintf(stderr,"Yay, we made it!\n");
+		exit(EXIT_SUCCESS);
+	}
 	/* else if the robot is trying to move, and the move is valid move the robot */	
 	else if((robot_dir == 'D' || robot_dir=='U' || robot_dir=='R' || robot_dir=='L') &&
-			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == 'O' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
+			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
 	{
 		map.buf[lLifter.y][lLifter.x] = ' ';
 		
@@ -189,7 +194,7 @@ int update_map(char robot_dir) {
 		for(x = 0; x < map.x_size; x++)
 		{
 			if(map.buf[y][x] == '\\') lambda_count ++;
-			if(map.buf[y][x] == 'L')
+			if(map.buf[y][x] == 'L' || map.buf[y][x] == 'O')
 			{
 				lift_x = x;
 				lift_y = y;
@@ -315,6 +320,13 @@ char move_robot()
 		return 'U';
 	if(D < 21)
 		return 'D';
+		
+	/* if the robot can't move, check to see if it can move a rock out of the way to open a path */
+	if(map.buf[lLifter.y][lLifter.x+1] == '*' && map.buf[lLifter.y][lLifter.x+2] == ' ')
+		return 'R';
+	if(map.buf[lLifter.y][lLifter.x-1] == '*' && map.buf[lLifter.y][lLifter.x-2] == ' ')
+		return 'L';
+		
 	return 'W';	
 }
 
@@ -380,9 +392,9 @@ int main(int argc,char **argv) {
                 fprintf(stderr,"robot broken\n");
                 exit (EXIT_FAILURE);
             }
+        }
         fprintf(stderr,"robot exceeded maximum number of moves\n");
         exit(EXIT_FAILURE);
-        }
     } else if (argc==1) {
         read_map(stdin);
         init_robot();
