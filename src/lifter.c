@@ -33,6 +33,7 @@ typedef struct {
 /* global variables */
 robot lLifter;
 world map;
+const int LONGEST_PATH=21;
 
 /* pad the map with spaces */
 void space_pad (char *st,int n){
