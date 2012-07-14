@@ -163,6 +163,32 @@ int update_map(char robot_dir) {
 					if(map.buf[y+2][x] == 'R')
 						movement_result = -1;
 				}
+				/* balanced rocks slide */
+				else if(map.buf[y+1][x] == '*' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
+				{
+					map.buf[y][x] = ' ';
+					map.buf[y+1][x+1] = '*';
+					/* falling rocks can kill robots */
+					if(map.buf[y+2][x+1] == 'R')
+						movement_result = -1;
+				}
+				else if(map.buf[y+1][x] == '*' && map.buf[y][x-1] == ' ' && map.buf[y+1][x-1] == ' ')
+				{
+					map.buf[y][x] = ' ';
+					map.buf[y+1][x-1] = '*';
+					/* falling rocks can kill robots */
+					if(map.buf[y+2][x-1] == 'R')
+						movement_result = -1;
+				}
+				else if(map.buf[y+1][x] == '\\' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
+				{
+					map.buf[y][x] = ' ';
+					map.buf[y+1][x+1] = '*';
+					/* falling rocks can kill robots */
+					if(map.buf[y+2][x+1] == 'R')
+						movement_result = -1;
+				}
+				
 			}
 		}
 	
