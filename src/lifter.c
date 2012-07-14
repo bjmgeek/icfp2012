@@ -9,12 +9,16 @@ typedef struct {
     int y;
     int steps;
     int lambdas;
+    int waterproof;
+    int water_steps;
 } robot;
 
 typedef struct {
     char ** buf;
     int x_size;
     int y_size;
+    int water;
+    int flooding;
 } world;
 
 /* global variables */
@@ -60,6 +64,14 @@ void read_map() {
     for (n=0;n<map.y_size;n++) {
         map.buf[n]=realloc(map.buf[n],max_len * sizeof (char*));
         space_pad(map.buf[n],max_len);
+    }
+
+    fprintf(stderr,"buffer line -3: \"%s\"\n",buf[line_no-3]);
+    if (line_no > 3 && strstr(buf[line_no-3],"Water") != NULL) {
+	    sscanf(buf[line_no-3],"Water %d",&(map.water));
+	    sscanf(buf[line_no-2],"Flooding %d",&(map.flooding));
+	    sscanf(buf[line_no-1],"Waterproof %d",&(lLifter.waterproof));
+        map.y_size -= 4;
     }
 }
 
