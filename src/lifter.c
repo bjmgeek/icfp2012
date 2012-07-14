@@ -9,6 +9,8 @@ typedef struct {
     int y;
     int steps;
     int lambdas;
+    int waterproof;
+    int water_steps;
 } robot;
 
 typedef struct {
@@ -16,6 +18,8 @@ typedef struct {
     int x_size;
     int y_size;
     int inital_lambdas;
+    int water;
+    int flooding;
 } world;
 
 /* global variables */
@@ -62,6 +66,19 @@ void read_map() {
         map.buf[n]=realloc(map.buf[n],max_len * sizeof (char*));
         space_pad(map.buf[n],max_len);
     }
+
+    /* check for water */
+    if (line_no > 3 && strstr(buf[line_no-3],"Water") != NULL) {
+	    sscanf(buf[line_no-3],"Water %d",&(map.water));
+	    sscanf(buf[line_no-2],"Flooding %d",&(map.flooding));
+	    sscanf(buf[line_no-1],"Waterproof %d",&(lLifter.waterproof));
+        map.y_size -= 4;
+    } else {
+        map.water=0;
+        map.flooding=0;
+        lLifter.waterproof=0;
+    }
+
 }
 
 /* find the robot on the map, and populate the global robot variable */
@@ -85,6 +102,7 @@ int x;
         fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
     }
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
+    fprintf(stderr,"water level: %d\n",map.water);
 }
 
 
@@ -202,10 +220,18 @@ int update_map(char robot_dir) {
 				
 			}
 		}
-	
+		
 	if(lambda_count != map.inital_lambdas - lLifter.lambdas)
 		fprintf(stderr, "incorrect lambda count");
-	
+
+    /* increase flooding if necessary */
+    if ((lLifter.steps % map.flooding)==0)
+        map.water++;
+    if (lLifter.y >= (map.y_size - map.water))
+        lLifter.water_steps++;
+    if (lLifter.water_steps > lLifter.waterproof)
+        return -1;
+
 	/* if all the lambdas are collected, the lift opens */	
 	if(lambda_count == 0)
 		map.buf[lift_y][lift_x] = 'O';
@@ -213,6 +239,40 @@ int update_map(char robot_dir) {
     print_map();
 	return movement_result;	
 }	
+
+
+
+int search(int y, int x, int steps, char dir)
+{
+	int min_steps = steps, test_steps = steps;
+	/* if unsafe location or too many steps(more than 10), return steps */
+	if(map.buf[y][x] == '#' || map.buf[y][x] == '*' || steps > 20)
+		return 0;
+	
+	/* if lambda or exit(& no lambdas left), return steps +1 */
+	if(map.buf[y][x] == '\\' || (map.inital_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
+		return steps +1;
+	
+	/* else search */
+	/* recursively check all 4 directions for closest safe lambda or exit*/
+	if(dir != 'R') {
+		test_steps = search(lLifter.y, lLifter.x+1, steps + 1, 'R');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'L') {
+		test_steps = search(lLifter.y, lLifter.x-1, steps + 1, 'L');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'U') {
+		test_steps = search(lLifter.y-1, lLifter.x, steps + 1, 'U');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	if(dir != 'D') {
+		test_steps = search(lLifter.y+1, lLifter.x, steps + 1, 'D');
+		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+	}
+	return min_steps;
+}
 
 /* tells the robot where to move next 
  * currently: moves towards the closest lambda or the exit
@@ -240,39 +300,6 @@ char move_robot()
 	if(D > 0)
 		return 'D';
 	return 'W';	
-}
-
-int search(int y, int x, int steps, char dir)
-{
-	int min_steps = steps, test_steps = steps;
-	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] = '*' || steps > 20)
-		return 0;
-	
-	/* if lambda or exit(& no lambdas left), return steps +1 */
-	if(map.buf[y][x] == '\\' || (map.inital_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
-		return steps +1;
-	
-	/* else search */
-	int U = 0, D = 0, L = 0, R = 0;
-	/* recursively check all 4 directions for closest safe lambda or exit*/
-	if(dir != 'R') {
-		test_steps = search(lLifter.y, lLifter.x+1, steps + 1, 'R');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	if(dir != 'L') {
-		test_steps = search(lLifter.y, lLifter.x-1, steps + 1, 'L');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	if(dir != 'U') {
-		test_steps = search(lLifter.y-1, lLifter.x, steps + 1, 'U');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	if(dir != 'D') {
-		test_steps = search(lLifter.y+1, lLifter.x, steps + 1, 'D');
-		if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
-	}
-	return min_steps;
 }
 
 
@@ -315,6 +342,7 @@ int main() {
 
 
 
+    print_map();
 
     return EXIT_SUCCESS;
 }
