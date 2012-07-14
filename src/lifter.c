@@ -66,13 +66,18 @@ void read_map() {
         space_pad(map.buf[n],max_len);
     }
 
-    fprintf(stderr,"buffer line -3: \"%s\"\n",buf[line_no-3]);
+    /* check for water */
     if (line_no > 3 && strstr(buf[line_no-3],"Water") != NULL) {
 	    sscanf(buf[line_no-3],"Water %d",&(map.water));
 	    sscanf(buf[line_no-2],"Flooding %d",&(map.flooding));
 	    sscanf(buf[line_no-1],"Waterproof %d",&(lLifter.waterproof));
         map.y_size -= 4;
+    } else {
+        map.water=0;
+        map.flooding=0;
+        robot.waterproof=0;
     }
+
 }
 
 /* find the robot on the map, and populate the global robot variable */
