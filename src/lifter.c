@@ -14,18 +14,25 @@ typedef struct {
 } robot;
 
 typedef struct {
+    char source;
+    int target;
+} trampoline;
+
+typedef struct {
     char ** buf;
     int x_size;
     int y_size;
     int initial_lambdas;
     int water;
     int flooding;
+    trampoline *tramps;
+    int num_tramps;
 } world;
+
 
 /* global variables */
 robot lLifter;
 world map;
-const int LONGEST_PATH = 20;
 
 /* pad the map with spaces */
 void space_pad (char *st,int n){
@@ -41,6 +48,37 @@ int count_lambdas() {
         for (x=0; x<map.x_size; x++)
             if (map.buf[y][x]=='\\')
                 count++;
+    fprintf(stderr,"found %d lambdas in map\n",count);
+    return count;
+}
+
+/* parses a buffer containing all the lines of input and updates metadata
+ * in the global world and robot variables */
+int get_metadata(char ** buf,int num_lines) {
+    int i;
+    int count=0;
+    for (i=0; i< num_lines; i++) {
+        if (strstr(buf[i],"Water ") != NULL) {
+            sscanf(buf[i],"Water %d",&(map.water));
+            count++;
+        }
+        if (strstr(buf[i],"Flooding") != NULL) {
+            sscanf(buf[i],"Flooding %d",&(map.flooding));
+            count++;
+        }
+        if (strstr(buf[i],"Waterproof") != NULL) {
+            sscanf(buf[i],"Waterproof %d",&(lLifter.waterproof));
+            count++;
+        }
+        if (strstr(buf[i],"Trampoline") != NULL) {
+            fprintf(stderr,"found trampoline\n");
+            map.tramps=realloc(map.tramps,(1 + map.num_tramps) * sizeof (trampoline));
+            sscanf(buf[i],"Trampoline %c targets %d",&(map.tramps[map.num_tramps].source),&(map.tramps[map.num_tramps].target));
+            map.num_tramps++;
+            count++;
+        }
+    }
+    fprintf(stderr,"found %d lines of metadata\n",count);
     return count;
 }
 
@@ -60,17 +98,31 @@ void read_map(FILE *f) {
         buf[line_no]=calloc(strlen(line),sizeof (char*));
         strcpy(buf[line_no],line);
         line_no++;
-        if (max_len < strlen(line)) {
-            max_len=strlen(line);
-        }
     }
 
     free(line);
 
     map.buf=buf;
     map.y_size=line_no;
+    map.tramps=NULL;
+    map.num_tramps=0;
+
+    /* check for metadata */
+    n=get_metadata(buf,line_no);
+    if (n == 0) {
+        map.water=0;
+        map.flooding=0;
+        lLifter.waterproof=0;
+    } else 
+        map.y_size -= (1+n);
+
+    /* find max length of the map lines only */
+    for (n=0;n<map.y_size;n++) {
+        if (max_len < strlen(map.buf[n])) {
+            max_len=strlen(map.buf[n]);
+        }
+    }
     map.x_size=max_len;
-    map.initial_lambdas=count_lambdas();
 
     /* The width of the mine is the number of characters in the longest line.  
      * shorter lines are assumed to be padded out with spaces */
@@ -78,18 +130,7 @@ void read_map(FILE *f) {
         map.buf[n]=realloc(map.buf[n],max_len * sizeof (char*));
         space_pad(map.buf[n],max_len);
     }
-
-    /* check for water */
-    if (line_no > 3 && strstr(buf[line_no-3],"Water") != NULL) {
-	    sscanf(buf[line_no-3],"Water %d",&(map.water));
-	    sscanf(buf[line_no-2],"Flooding %d",&(map.flooding));
-	    sscanf(buf[line_no-1],"Waterproof %d",&(lLifter.waterproof));
-        map.y_size -= 4;
-    } else {
-        map.water=0;
-        map.flooding=0;
-        lLifter.waterproof=0;
-    }
+    map.initial_lambdas=count_lambdas();
 }
 
 /* find the robot on the map, and populate the global robot variable */
@@ -109,6 +150,7 @@ void init_robot() {
 /* print the map so we can watch our robot get squashed by rocks */
 void print_map(){
 int x;
+    fprintf(stderr,"map size: %d rows of %d columns each\n",map.y_size,map.x_size);
     for (x=0; x<map.y_size;x++) {
         fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
     }
@@ -116,6 +158,8 @@ int x;
     fprintf(stderr,"water level: %d\n",map.water);
     fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
     fprintf(stderr,"steps: %d\n",lLifter.steps);
+    for (x=0; x<map.num_tramps; x++)
+        fprintf(stderr,"trampoline %c to target %d\n",map.tramps[x].source,map.tramps[x].target);
 }
 
 
@@ -257,82 +301,49 @@ int update_map(char robot_dir) {
 	return movement_result;	
 }	
 
-/* checks to see if this spot has already been checked in this path 
- * returns 1 for true
- * returns 0 for false
- */
-int already_been_here(int y, int x, int steps, char* path)
-{
-	int i, y_prime=y, x_prime=x;
-	
-	for(i = steps; i > 0; i --)
-	{
-		switch(path[steps]) {
-			case 'D': y_prime --; break;
-			case 'U': y_prime ++; break;
-			case 'R': x_prime --; break;
-			case 'L': x_prime ++; break;
-		}
-		if(y==y_prime && x==x_prime)
-			return 1;
-	}	
-	return 0;
-}
 
 /* keeps track of where it came from for more efficent searching */
-int search(int y, int x, int steps, char* path)
+int search(int y, int x, int steps, char dir)
 {
-	int min_steps = LONGEST_PATH+1, test_steps;
-	char dir = path[steps];
+	int min_steps = 21, test_steps;
 	
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
 	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > LONGEST_PATH )
-		return LONGEST_PATH+1;
+	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > 20 )
+		return 21;
 	/* check to see if rocks could be moved */
 	if(map.buf[y][x] == '*')
 	{
-		steps++;
-		if(dir == 'L' && map.buf[y][x-1] == ' '){
-			path[steps] = 'L';
-			min_steps = search(y, x-1, steps, path);
-		}
-		else if(dir == 'R' && map.buf[y][x+1] == ' '){
-			path[steps] = 'R';
-			min_steps = search(y, x+1, steps, path);
-		}
+		if(dir == 'L' && map.buf[y][x-1] == ' ')
+			min_steps = search(y, x-1, steps+1, 'L');
+		else if(dir == 'R' && map.buf[y][x+1] == ' ')
+			min_steps = search(y, x+1, steps+1, 'R');
 		else
-			return LONGEST_PATH+1;
+			return 21;
 	}
 	else
 	{
-		steps++;
-		
 		/* if lambda or exit(& no lambdas left), return steps +1 */
 		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
-			return steps;
+			return steps +1;
 		
 		/* else search */
 		/* recursively check all 4 directions for closest safe lambda or exit*/
 		if(dir != 'L') {
-			path[steps] = 'R';
-			test_steps = search(y, x+1, steps, path);
+			test_steps = search(y, x+1, steps + 1, 'R');
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'R') {
-			path[steps] = 'L';
-			test_steps = search(y, x-1, steps, path);
+			test_steps = search(y, x-1, steps + 1, 'L');
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'D') {
-			path[steps] = 'U';
-			test_steps = search(y-1, x, steps, path);
+			test_steps = search(y-1, x, steps + 1, 'U');
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'U') {
-			path[steps] = 'D';
-			test_steps = search(y+1, x, steps, path);
+			test_steps = search(y+1, x, steps + 1, 'D');
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 	}
@@ -350,27 +361,21 @@ int search(int y, int x, int steps, char* path)
 char move_robot()
 {
 	int U = 0, D = 0, L = 0, R = 0;
-	char* path = calloc(LONGEST_PATH+1, sizeof (char));
 	/* recursively check all 4 directions for closest safe lambda or exit*/
-	path[0] = 'R';
-	R = search(lLifter.y, lLifter.x+1, 0, path);
-	path[0] = 'L';
-	L = search(lLifter.y, lLifter.x-1, 0, path);
-	path[0] = 'U';
-	U = search(lLifter.y-1, lLifter.x, 0, path);
-	path[0] = 'D';
-	D = search(lLifter.y+1, lLifter.x, 0, path);
+	R = search(lLifter.y, lLifter.x+1, 0, 'R');
+	L = search(lLifter.y, lLifter.x-1, 0, 'L');
+	U = search(lLifter.y-1, lLifter.x, 0, 'U');
+	D = search(lLifter.y+1, lLifter.x, 0, 'D');
 	
-	/* fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);*/
-	free(path);
+	fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);
 	
-	if(R < LONGEST_PATH+1 && R < U && R < D && R < L)
+	if(R < 21 && R < U && R < D && R < L)
 		return 'R';
-	if(L < LONGEST_PATH+1 && L < U && L < D)
+	if(L < 21 && L < U && L < D)
 		return 'L';
-	if(U < LONGEST_PATH+1 && U < D)
+	if(U < 21 && U < D)
 		return 'U';
-	if(D < LONGEST_PATH+1)
+	if(D < 21)
 		return 'D';
 		
 	/* if the robot can't move, check to see if it can move a rock out of the way to open a path */
