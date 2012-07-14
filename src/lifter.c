@@ -77,6 +77,16 @@ void init_robot() {
             }
 }
 
+/* print the map so we can watch our robot get squashed by rocks */
+void print_map(){
+int x;
+    for (x=0; x<map.y_size;x++) {
+        fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
+    }
+    fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
+}
+
+
 /* updates map based on robot's movement
  * returns 1 if move is successful
  * returns 0 if move is unsuccessful
@@ -170,6 +180,7 @@ int update_map(char robot_dir) {
 	if(lambda_count == 0)
 		map.buf[lift_y][lift_x] = 'O';
 	
+    print_map();
 	return movement_result;	
 }	
 
@@ -202,10 +213,7 @@ void sig_handler(int signum) {
     }
 }
 
-
 int main() {
-    int x=0;
-
     read_map();
     init_robot();
 
@@ -215,11 +223,6 @@ int main() {
 
 
 
-    fprintf(stderr,"x: %d y: %d\n",map.x_size,map.y_size);
-    for (x=0; x<map.y_size;x++) {
-        fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
-    }
-    fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
 
     return EXIT_SUCCESS;
 }
