@@ -96,6 +96,7 @@ int x;
         fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
     }
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
+    fprintf(stderr,"water level: %d\n",map.water);
 }
 
 
