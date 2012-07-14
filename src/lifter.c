@@ -35,14 +35,14 @@ void space_pad (char *st,int n){
 
 /* populate the global world variable, and allocate the array of 
  * strings for its buffer */
-void read_map() {
+void read_map(FILE *f) {
     char **buf=NULL;
     char *line=NULL;
     size_t n=0;
     int line_no=0;
     int max_len=0;
 
-    while (getline(&line,&n,stdin) != -1){
+    while (getline(&line,&n,f) != -1){
         /* replace newline with null */
         line[strchr(line,'\n')-line]='\0';
         buf=realloc(buf,(1+line_no) * sizeof (char*));
@@ -104,6 +104,7 @@ int x;
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
     fprintf(stderr,"water level: %d\n",map.water);
     fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
+    fprintf(stderr,"steps: %d\n",lLifter.steps);
 }
 
 
@@ -223,7 +224,7 @@ int update_map(char robot_dir) {
 		}
 		
 	if(lambda_count != map.initial_lambdas - lLifter.lambdas)
-		fprintf(stderr, "incorrect lambda count");
+		fprintf(stderr, "incorrect lambda count\n");
 
     /* increase flooding if necessary */
     if ((map.flooding > 0) && (lLifter.steps % map.flooding)==0)
@@ -350,14 +351,21 @@ int main(int argc,char **argv) {
 
     /* interactive mode */
     if ((argc == 3) && !strcmp(argv[2],"-i")) {
+        fprintf(stderr,"starting interactive mode\n");
         infile=fopen(argv[1],"r");
         read_map(infile);
         init_robot();
-        print_map();
-        move=move_robot();
-        fprintf(stderr,"about to execute move: %c\n",move);
-        if (update_map(move)==-1)
-            fprintf(stderr,"robot broken\n");
+        while (1) {
+            print_map();
+            move=move_robot();
+            fprintf(stderr,"about to execute move: %c\n",move);
+            fprintf(stderr,"press enter: ");
+            getchar();
+            if (update_map(move)==-1) {
+                fprintf(stderr,"robot broken\n");
+                exit (EXIT_FAILURE);
+            }
+        }
     } else if (argc==1) {
         read_map(stdin);
         init_robot();
