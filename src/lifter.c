@@ -232,7 +232,6 @@ int update_map(char robot_dir) {
 	if(lambda_count == 0)
 		map.buf[lift_y][lift_x] = 'O';
 	
-    print_map();
 	return movement_result;	
 }	
 
@@ -265,17 +264,32 @@ void sig_handler(int signum) {
     }
 }
 
-int main() {
-    read_map();
-    init_robot();
+int main(int argc,char **argv) {
+    char move;
+    FILE *infile;
 
     signal(SIGINT,sig_handler);
     signal(SIGALRM,sig_handler);
 
+    /* interactive mode */
+    if ((argc == 3) && !strcmp(argv[2],"-i")) {
+        infile=fopen(argv[1],"r");
+        read_map(infile);
+        init_robot();
+        print_map();
+        move=move_robot();
+        fprintf(stderr,"about to execute move: %c\n",move);
+        if (update_map(move)==-1)
+            fprintf(stderr,"robot broken\n");
+    } else if (argc==1) {
+        read_map(stdin);
+        init_robot();
+        while (true) {
+            move=move_robot();
+            putchar(move);
+            update_map(move);
+        }
 
-
-
-    print_map();
 
     return EXIT_SUCCESS;
 }
