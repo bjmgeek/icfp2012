@@ -85,6 +85,8 @@ void init_robot() {
 int update_map(char robot_dir) {
 	int x_prime = lLifter.x, y_prime=lLifter.y;
 	int movement_result = 0;
+	int lambda_count = 0, lift_x = -1, lift_y = -1;
+	int x,y;
 	
 	switch(robot_dir) {
 		case 'D': y_prime ++; break;
@@ -98,8 +100,8 @@ int update_map(char robot_dir) {
 	/** update robot */
 	
 	/* if the robot is trying to move off the map, WAIT */
-	if(x_prime >= x_size || x_prime < 0
-	  || y_prime >= y_size || y_prime < 0)
+	if(x_prime >= map.x_size || x_prime < 0
+	  || y_prime >= map.y_size || y_prime < 0)
 	  movement_result = 0;
 	/* if a robot is trying to move a rock, move rock if there is an empty space behind the rock */
 	else if(map.buf[y_prime][x_prime] == '*' && (robot_dir == 'L' || robot_dir == 'R'))
@@ -142,11 +144,10 @@ int update_map(char robot_dir) {
 	}
 	
 	/** update map */
-	int lambda_count = 0, lift_x = -1; lift_y = -1;
-	for(int y = 0; y < map.y_size; y++)
-		for(int x = 0; x < map.x_size; x++)
+	for(y = 0; y < map.y_size; y++)
+		for(x = 0; x < map.x_size; x++)
 		{
-			if(map.buf[y][x] == '//') lambda_count ++;
+			if(map.buf[y][x] == '\\') lambda_count ++;
 			if(map.buf[y][x] == 'L')
 			{
 				lift_x = x;
@@ -159,7 +160,7 @@ int update_map(char robot_dir) {
 					map.buf[y][x] = ' ';
 					map.buf[y+1][x] = '*';
 					/* falling rocks can kill robots */
-					if(map.buf[y+2][x] = 'R';
+					if(map.buf[y+2][x] == 'R')
 						movement_result = -1;
 				}
 			}
