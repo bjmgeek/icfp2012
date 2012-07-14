@@ -25,6 +25,7 @@ typedef struct {
 /* global variables */
 robot lLifter;
 world map;
+const int LONGEST_PATH = 20;
 
 /* pad the map with spaces */
 void space_pad (char *st,int n){
@@ -256,49 +257,82 @@ int update_map(char robot_dir) {
 	return movement_result;	
 }	
 
+/* checks to see if this spot has already been checked in this path 
+ * returns 1 for true
+ * returns 0 for false
+ */
+int already_been_here(int y, int x, int steps, char* path)
+{
+	int i, y_prime=y, x_prime=x;
+	
+	for(i = steps; i > 0; i --)
+	{
+		switch(path[steps]) {
+			case 'D': y_prime --; break;
+			case 'U': y_prime ++; break;
+			case 'R': x_prime --; break;
+			case 'L': x_prime ++; break;
+		}
+		if(y==y_prime && x==x_prime)
+			return 1;
+	}	
+	return 0;
+}
 
 /* keeps track of where it came from for more efficent searching */
-int search(int y, int x, int steps, char dir)
+int search(int y, int x, int steps, char* path)
 {
-	int min_steps = 21, test_steps;
+	int min_steps = LONGEST_PATH+1, test_steps;
+	char dir = path[steps];
 	
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
 	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > 20 )
-		return 21;
+	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > LONGEST_PATH )
+		return LONGEST_PATH+1;
 	/* check to see if rocks could be moved */
 	if(map.buf[y][x] == '*')
 	{
-		if(dir == 'L' && map.buf[y][x-1] == ' ')
-			min_steps = search(y, x-1, steps+1, 'L');
-		else if(dir == 'R' && map.buf[y][x+1] == ' ')
-			min_steps = search(y, x+1, steps+1, 'R');
+		steps++;
+		if(dir == 'L' && map.buf[y][x-1] == ' '){
+			path[steps] = 'L';
+			min_steps = search(y, x-1, steps, path);
+		}
+		else if(dir == 'R' && map.buf[y][x+1] == ' '){
+			path[steps] = 'R';
+			min_steps = search(y, x+1, steps, path);
+		}
 		else
-			return 21;
+			return LONGEST_PATH+1;
 	}
 	else
 	{
+		steps++;
+		
 		/* if lambda or exit(& no lambdas left), return steps +1 */
 		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
-			return steps +1;
+			return steps;
 		
 		/* else search */
 		/* recursively check all 4 directions for closest safe lambda or exit*/
 		if(dir != 'L') {
-			test_steps = search(y, x+1, steps + 1, 'R');
+			path[steps] = 'R';
+			test_steps = search(y, x+1, steps, path);
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'R') {
-			test_steps = search(y, x-1, steps + 1, 'L');
+			path[steps] = 'L';
+			test_steps = search(y, x-1, steps, path);
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'D') {
-			test_steps = search(y-1, x, steps + 1, 'U');
+			path[steps] = 'U';
+			test_steps = search(y-1, x, steps, path);
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'U') {
-			test_steps = search(y+1, x, steps + 1, 'D');
+			path[steps] = 'D';
+			test_steps = search(y+1, x, steps, path);
 			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
 		}
 	}
@@ -316,21 +350,27 @@ int search(int y, int x, int steps, char dir)
 char move_robot()
 {
 	int U = 0, D = 0, L = 0, R = 0;
+	char* path = calloc(LONGEST_PATH+1, sizeof (char));
 	/* recursively check all 4 directions for closest safe lambda or exit*/
-	R = search(lLifter.y, lLifter.x+1, 0, 'R');
-	L = search(lLifter.y, lLifter.x-1, 0, 'L');
-	U = search(lLifter.y-1, lLifter.x, 0, 'U');
-	D = search(lLifter.y+1, lLifter.x, 0, 'D');
+	path[0] = 'R';
+	R = search(lLifter.y, lLifter.x+1, 0, path);
+	path[0] = 'L';
+	L = search(lLifter.y, lLifter.x-1, 0, path);
+	path[0] = 'U';
+	U = search(lLifter.y-1, lLifter.x, 0, path);
+	path[0] = 'D';
+	D = search(lLifter.y+1, lLifter.x, 0, path);
 	
-	fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);
+	/* fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);*/
+	free(path);
 	
-	if(R < 21 && R < U && R < D && R < L)
+	if(R < LONGEST_PATH+1 && R < U && R < D && R < L)
 		return 'R';
-	if(L < 21 && L < U && L < D)
+	if(L < LONGEST_PATH+1 && L < U && L < D)
 		return 'L';
-	if(U < 21 && U < D)
+	if(U < LONGEST_PATH+1 && U < D)
 		return 'U';
-	if(D < 21)
+	if(D < LONGEST_PATH+1)
 		return 'D';
 		
 	/* if the robot can't move, check to see if it can move a rock out of the way to open a path */
