@@ -75,7 +75,7 @@ void read_map() {
     } else {
         map.water=0;
         map.flooding=0;
-        robot.waterproof=0;
+        lLifter.waterproof=0;
     }
 
 }
@@ -220,6 +220,14 @@ int update_map(char robot_dir) {
 			}
 		}
 	
+    /* increase flooding if necessary */
+    if ((lLifter.steps % map.flooding)==0)
+        map.water++;
+    if (lLifter.y >= (map.y_size - map.water))
+        lLifter.water_steps++;
+    if (lLifter.water_steps > lLifter.waterproof)
+        return -1;
+
 	/* if all the lambdas are collected, the lift opens */	
 	if(lambda_count == 0)
 		map.buf[lift_y][lift_x] = 'O';
