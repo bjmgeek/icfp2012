@@ -1,3 +1,3 @@
 CFLAGS=-g -static -Wall -pedantic
 lifter: src/lifter
-	cp src/lifter .
+	ln -sf src/lifter .
