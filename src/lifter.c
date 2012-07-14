@@ -17,6 +17,7 @@ typedef struct {
     int y_size;
 } world;
 
+/* global variables */
 robot lLifter;
 world map;
 
@@ -27,10 +28,9 @@ void space_pad (char *st,int n){
 		st[i]=' ';
 }
 
-/* reads the map from standard input into a buffer */
-world read_map() {
-    /* returns a newly allocated array of (newly allocated) strings */
-    world w={NULL,0,0};
+/* populate the global world variable, and allocate the array of 
+ * strings for its buffer */
+void read_map() {
     char **buf=NULL;
     char *line=NULL;
     size_t n=0;
@@ -49,18 +49,32 @@ world read_map() {
         }
     }
 
-    w.buf=buf;
-    w.y_size=line_no;
-    w.x_size=max_len;
+    free(line);
+
+    map.buf=buf;
+    map.y_size=line_no;
+    map.x_size=max_len;
 
     /* The width of the mine is the number of characters in the longest line.  
      * shorter lines are assumed to be padded out with spaces */
-    for (n=0;n<w.y_size;n++) {
-        w.buf[n]=realloc(w.buf[n],max_len * sizeof (char*));
-        space_pad(w.buf[n],max_len);
+    for (n=0;n<map.y_size;n++) {
+        map.buf[n]=realloc(map.buf[n],max_len * sizeof (char*));
+        space_pad(map.buf[n],max_len);
     }
+}
 
-    return w;
+/* find the robot on the map, and populate the global robot variable */
+void init_robot() {
+    int x,y;
+
+    lLifter.steps=0;
+    lLifter.lambdas=0;
+    for (x=0; x<map.x_size; x++)
+        for (y=0; y<map.y_size; y++)
+            if (map.buf[y][x]=='R') {
+                lLifter.x=x;
+                lLifter.y=y;
+            }
 }
 
 /* updates map based on robot's movement
@@ -159,7 +173,7 @@ int update_map(char robot_dir) {
 }	
 
 
-/* calculate the score if we abbort now */
+/* calculate the score if we abort now */
 int calc_abort_score() {
   /* need to keep track of how many lambdas we've picked up already
    * need to keep track of how many steps we've taken 
@@ -187,9 +201,12 @@ void sig_handler(int signum) {
     }
 }
 
+
 int main() {
-    world w=read_map();
     int x=0;
+
+    read_map();
+    init_robot();
 
     signal(SIGINT,sig_handler);
     signal(SIGALRM,sig_handler);
@@ -197,10 +214,11 @@ int main() {
 
 
 
-    fprintf(stderr,"x: %d y: %d\n",w.x_size,w.y_size);
-    for (x=0; x<w.y_size;x++) {
-        fprintf(stderr,"%d \"%s\"\n",x,w.buf[x]);
+    fprintf(stderr,"x: %d y: %d\n",map.x_size,map.y_size);
+    for (x=0; x<map.y_size;x++) {
+        fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
     }
+    fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
 
     return EXIT_SUCCESS;
 }
