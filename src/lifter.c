@@ -152,7 +152,7 @@ void print_map(){
 int x;
     fprintf(stderr,"map size: %d rows of %d columns each\n",map.y_size,map.x_size);
     for (x=0; x<map.y_size;x++) {
-        fprintf(stderr,"%d \"%s\"\n",x,map.buf[x]);
+        fprintf(stderr,"%02d \"%s\"\n",x,map.buf[x]);
     }
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
     fprintf(stderr,"water level: %d\n",map.water);
@@ -161,6 +161,7 @@ int x;
     for (x=0; x<map.num_tramps; x++)
         fprintf(stderr,"trampoline %c to target %d\n",map.tramps[x].source,map.tramps[x].target);
 }
+
 
 
 /* updates map based on robot's movement
@@ -215,7 +216,7 @@ int update_map(char robot_dir) {
 	}
 	else if(map.buf[y_prime][x_prime] == 'O')
 	{
-		fprintf(stderr,"Yay, we made it!\n");
+		fprintf(stderr," Yay, we made it!\n");
 		exit(EXIT_SUCCESS);
 	}
 	/* else if the robot is trying to move, and the move is valid move the robot */	
@@ -301,52 +302,63 @@ int update_map(char robot_dir) {
 	return movement_result;	
 }	
 
-
 /* keeps track of where it came from for more efficent searching */
 int search(int y, int x, int steps, char dir)
 {
-	int min_steps = 21, test_steps;
+	int min_steps = LONGEST_PATH, test_steps;
 	
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
-	/* if unsafe location or too many steps(more than 10), return steps */
-	if(map.buf[y][x] == '#' || map.buf[y][x] == 'L' || steps > 20 )
-		return 21;
-	/* check to see if rocks could be moved */
-	if(map.buf[y][x] == '*')
+	/* if safe location or not too many steps(more than LONGEST_PATH), continue searching */
+	if(map.buf[y][x] != '#' && map.buf[y][x] != 'L' && map.buf[y][x] != '*' && steps < LONGEST_PATH )
 	{
-		if(dir == 'L' && map.buf[y][x-1] == ' ')
-			min_steps = search(y, x-1, steps+1, 'L');
-		else if(dir == 'R' && map.buf[y][x+1] == ' ')
-			min_steps = search(y, x+1, steps+1, 'R');
-		else
-			return 21;
-	}
-	else
-	{
+		steps++;
+		
 		/* if lambda or exit(& no lambdas left), return steps +1 */
 		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
-			return steps +1;
-		
+			return steps;
+			
+		/* if lambda or exit nearby , return steps +2*/
+		if(map.buf[y][x+1] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x+1] == 'O') ||
+			map.buf[y][x-1] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x-1] == 'O') ||
+			map.buf[y-1][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y-1][x] == 'O') ||
+			(map.buf[y-1][x] != '*' && (map.buf[y+1][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y+1][x] == 'O'))))
+			return steps+1;
 		/* else search */
 		/* recursively check all 4 directions for closest safe lambda or exit*/
-		if(dir != 'L') {
-			test_steps = search(y, x+1, steps + 1, 'R');
-			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		if(dir != 'L' && min_steps > steps+1) {
+			test_steps = search(y, x+1, steps, 'R');
+			if (test_steps < min_steps) min_steps = test_steps;
 		}
-		if(dir != 'R') {
-			test_steps = search(y, x-1, steps + 1, 'L');
-			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		if(dir != 'R' && min_steps > steps+1) {
+			test_steps = search(y, x-1, steps, 'L');
+			if (test_steps < min_steps) min_steps = test_steps;
 		}
-		if(dir != 'D') {
-			test_steps = search(y-1, x, steps + 1, 'U');
-			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		if(dir != 'D' && min_steps > steps+1) {
+			test_steps = search(y-1, x, steps, 'U');
+			if (test_steps < min_steps) min_steps = test_steps;
 		}
-		if(dir != 'U') {
-			test_steps = search(y+1, x, steps + 1, 'D');
-			if (test_steps > 0 && test_steps < min_steps) min_steps = test_steps;
+		if(dir != 'U' && min_steps > steps+1 && map.buf[y-1][x] != '*') {
+			test_steps = search(y+1, x, steps, 'D');
+			if (test_steps < min_steps) min_steps = test_steps;
 		}
 	}
+	
+	/* if unable to move, check to see if there is a rock here that can be moved 
+	 * without blocking anything */
+	if(min_steps == LONGEST_PATH && map.buf[y][x] == '*')
+	{
+		steps++;
+		if(dir == 'L' && map.buf[y][x-1] == ' ' && map.buf[y][x-2] !='O' && map.buf[y][x-2] != 'L'){
+			min_steps = search(y, x-1, steps, 'L');
+		}
+		else if(dir == 'R' && map.buf[y][x+1] == ' ' && map.buf[y][x+2] !='O' && map.buf[y][x+2] != 'L'){
+			min_steps = search(y, x+1, steps, 'R');
+		}
+		else
+			return LONGEST_PATH;
+	}
+	
 	return min_steps;
 }
 
@@ -360,22 +372,23 @@ int search(int y, int x, int steps, char dir)
  * */
 char move_robot()
 {
-	int U = 0, D = 0, L = 0, R = 0;
+	int U = LONGEST_PATH, D = LONGEST_PATH, L = LONGEST_PATH, R = LONGEST_PATH;
 	/* recursively check all 4 directions for closest safe lambda or exit*/
 	R = search(lLifter.y, lLifter.x+1, 0, 'R');
 	L = search(lLifter.y, lLifter.x-1, 0, 'L');
 	U = search(lLifter.y-1, lLifter.x, 0, 'U');
-	D = search(lLifter.y+1, lLifter.x, 0, 'D');
+	if(map.buf[lLifter.y-1][lLifter.x] != '*')
+		D = search(lLifter.y+1, lLifter.x, 0, 'D');
 	
-	fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);
+	/*fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);*/
 	
-	if(R < 21 && R < U && R < D && R < L)
+	if(R < LONGEST_PATH && R <= U && R <= D && R <= L)
 		return 'R';
-	if(L < 21 && L < U && L < D)
+	if(L < LONGEST_PATH && L <= U && L <= D)
 		return 'L';
-	if(U < 21 && U < D)
+	if(U < LONGEST_PATH && U <= D)
 		return 'U';
-	if(D < 21)
+	if(D < LONGEST_PATH)
 		return 'D';
 		
 	/* if the robot can't move, check to see if it can move a rock out of the way to open a path */
@@ -446,11 +459,11 @@ int main(int argc,char **argv) {
             fprintf(stderr,"press enter:\n");
             getchar();
             if (update_map(move)==-1) {
-                fprintf(stderr,"robot broken\n");
+                fprintf(stderr," robot broken\n");
                 exit (EXIT_FAILURE);
             }
         }
-        fprintf(stderr,"robot exceeded maximum number of moves\n");
+        fprintf(stderr," robot exceeded maximum number of moves\n");
         exit(EXIT_FAILURE);
     } else if (argc==1) {
         read_map(stdin);
@@ -459,9 +472,12 @@ int main(int argc,char **argv) {
             move=move_robot();
             putchar(move);
             fflush(stdout);
-            update_map(move);
+            if (update_map(move)==-1) {
+                fprintf(stderr," robot broken\n");
+                exit (EXIT_FAILURE);
+            }
         }
-        fprintf(stderr,"robot exceeded maximum number of moves\n");
+        fprintf(stderr," robot exceeded maximum number of moves\n");
         exit(EXIT_FAILURE);
     } else {
         fprintf(stderr,"usage: %s\n%s <file> -i\n",argv[0],argv[0]);
