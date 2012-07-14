@@ -7,6 +7,8 @@
 typedef struct {
     int x;
     int y;
+    int steps;
+    int lambdas;
 } robot;
 
 typedef struct {
@@ -15,15 +17,18 @@ typedef struct {
     int y_size;
 } world;
 
+robot lLifter;
+world map;
 
+/* pad the map with spaces */
 void space_pad (char *st,int n){
 	int i;
 	for (i=strlen(st); i<n; i++)
 		st[i]=' ';
 }
 
-world read_map()
-{
+/* reads the map from standard input into a buffer */
+world read_map() {
     /* returns a newly allocated array of (newly allocated) strings */
     world w={NULL,0,0};
     char **buf=NULL;
@@ -58,9 +63,28 @@ world read_map()
     return w;
 }
 
+void update_map(char robot_dir) {
+	int x_prime = lLifter.x, y_prime=lLifter.y;
+	
+	switch(robot_dir) {
+		case 'N': y_prime ++; break;
+		case 'S': y_prime --; break;
+		case 'E': x_prime ++; break;
+		case 'W': x_prime --; break;
+	}
+	
+	
+	
+}	
+
+
+/* calculate the score if we abbort now */
 int calc_abort_score() {
-    fprintf(stderr,"FIXME: calc_abort_score()\n");
-    return 1;
+  /* need to keep track of how many lambdas we've picked up already
+   * need to keep track of how many steps we've taken 
+   * score = lambdas * 50 - steps
+   */
+    return (lLifter.lambdas * 50) - lLifter.steps;
 }
 
 void last_second(){
@@ -72,8 +96,7 @@ void last_second(){
     }
 }
 
-void sig_handler(int signum)
-{
+void sig_handler(int signum) {
     if (signum==SIGINT){
         fprintf(stderr,"caught SIGINT\n");
         alarm(9);
@@ -83,8 +106,7 @@ void sig_handler(int signum)
     }
 }
 
-int main()
-{
+int main() {
     world w=read_map();
     int x=0;
 
