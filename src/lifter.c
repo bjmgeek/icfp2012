@@ -400,6 +400,8 @@ int update_map(char robot_dir) {
         map.water++;
     if (lLifter.y >= (map.y_size - map.water))
         lLifter.water_steps++;
+    else
+		lLifter.water_steps = 0;
     if (lLifter.water_steps > lLifter.waterproof)
         return -1;
 
@@ -491,9 +493,16 @@ char move_robot()
 {
 	int U = LONGEST_PATH, D = LONGEST_PATH, L = LONGEST_PATH, R = LONGEST_PATH, x, y;
 	
-	/* if under water and out of waterproofing, abort */
+	/* if under water and out of waterproofing 
+	 * pop up if at the surface, otherwise abort */
 	if(lLifter.water_steps == lLifter.waterproof)
-		return 'A';
+	{
+		if((map.water == map.y_size - lLifter.y) && 
+			(map.buf[lLifter.y-1][lLifter.x] == '.' || map.buf[lLifter.y-1][lLifter.x] == ' '))
+			return 'U';
+		else
+			return 'A';
+	}
 	
 	/* recursively check all 4 directions for closest safe lambda or exit*/
 	R = search(lLifter.y, lLifter.x+1, 0, 'R');
