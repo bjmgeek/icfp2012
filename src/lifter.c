@@ -209,7 +209,25 @@ int x;
         fprintf(stderr,"trampoline %c to target %c\n",map.tramps[x].source,map.tramps[x].target);
 }
 
+/* allocates a new array of n strings (each of length l) and copies from
+ * src to dest */
+char** copy_buf (char **src,int n,int l) {
+    int i;
+    char **dest;
+    dest=malloc(n*sizeof (char*));
+    for (i=0; i<n; i++) {
+        dest[i]=malloc(l*sizeof(char));
+        strcpy(dest[i],src[i]);
+    }
+    return dest;
+}
 
+void cleanup(char **buf,int lines){
+    int i;
+    for (i=0; i<lines; i++)
+        free(buf[i]);
+    free(buf);
+}
 
 /* updates map based on robot's movement
  * returns 1 if move is successful
@@ -219,9 +237,11 @@ int x;
 int update_map(char robot_dir) {
 	int x_prime = lLifter.x, y_prime=lLifter.y;
 	int movement_result = 0;
-	int lambda_count = 0, lift_x = -1, lift_y = -1;
+	int lift_x = -1, lift_y = -1;
 	int x,y,i;
 	char robot_target = '0';
+    char **new_buf=NULL;
+    new_buf=copy_buf(map.buf,map.y_size,map.x_size);
 	
 	switch(robot_dir) {
 		case 'D': y_prime ++; break;
@@ -243,20 +263,20 @@ int update_map(char robot_dir) {
 	{
 		if(robot_dir == 'L' && map.buf[y_prime][x_prime-1] == ' ')
 		{
-			map.buf[y_prime][x_prime-1] = '*';
-			map.buf[lLifter.y][lLifter.x] = ' ';
+			new_buf[y_prime][x_prime-1] = '*';
+			new_buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
-			map.buf[lLifter.y][lLifter.x] = 'R';
+			new_buf[lLifter.y][lLifter.x] = 'R';
 			movement_result = 1;
 		}
 		else if(robot_dir == 'R' && map.buf[y_prime][x_prime+1] == ' ')
 		{
-			map.buf[y_prime][x_prime+1] = '*';
-			map.buf[lLifter.y][lLifter.x] = ' ';
+			new_buf[y_prime][x_prime+1] = '*';
+			new_buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
-			map.buf[lLifter.y][lLifter.x] = 'R';
+			new_buf[lLifter.y][lLifter.x] = 'R';
 			movement_result = 1;
 		}
 		else
@@ -269,11 +289,11 @@ int update_map(char robot_dir) {
 			if(map.tramps[i].source == map.buf[y_prime][x_prime])
 			{
 				robot_target = map.tramps[i].target;
-				map.buf[lLifter.y][lLifter.x] = ' ';
-				map.buf[y_prime][x_prime] = ' ';
+				new_buf[lLifter.y][lLifter.x] = ' ';
+				new_buf[y_prime][x_prime] = ' ';
 				lLifter.y = map.tramps[i].target_y;
 				lLifter.x = map.tramps[i].target_x;
-				map.buf[lLifter.y][lLifter.x] = 'R';
+				new_buf[lLifter.y][lLifter.x] = 'R';
 			}
 	}	
 	else if(map.buf[y_prime][x_prime] == 'O')
@@ -285,15 +305,16 @@ int update_map(char robot_dir) {
 	else if((robot_dir == 'D' || robot_dir=='U' || robot_dir=='R' || robot_dir=='L') &&
 			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
 	{
-		map.buf[lLifter.y][lLifter.x] = ' ';
+		new_buf[lLifter.y][lLifter.x] = ' ';
 		
 		/* if the robot is moving onto a lambda, pick it up */
-		if(map.buf[y_prime][x_prime] == '\\')
+		if(map.buf[y_prime][x_prime] == '\\') {
 			lLifter.lambdas ++;		
+        }
 		
 		lLifter.y = y_prime;
 		lLifter.x = x_prime;
-		map.buf[lLifter.y][lLifter.x] = 'R';
+		new_buf[lLifter.y][lLifter.x] = 'R';
 		movement_result = 1;
 	}
 	
@@ -301,8 +322,7 @@ int update_map(char robot_dir) {
 	for(y = map.y_size -1; y >= 0; y--)
 		for(x = 0; x < map.x_size; x++)
 		{
-			if(map.buf[y][x] == '\\') lambda_count ++;
-			else if(map.buf[y][x] == 'L' || map.buf[y][x] == 'O')
+			if(map.buf[y][x] == 'L' || map.buf[y][x] == 'O')
 			{
 				lift_x = x;
 				lift_y = y;
@@ -312,14 +332,14 @@ int update_map(char robot_dir) {
 				/* trampolines with used targets disappear */
 				for(i=0;i<map.num_tramps;i++)
 					if(map.tramps[i].source == map.buf[y][x] && map.tramps[i].target == robot_target)
-						map.buf[y][x] = ' ';
+						new_buf[y][x] = ' ';
 			}	
 			else if(map.buf[y][x] == '*')
 			{	/* unsupported rocks fall */
 				if(map.buf[y+1][x] == ' ')
 				{
-					map.buf[y][x] = ' ';
-					map.buf[y+1][x] = '*';
+					new_buf[y][x] = ' ';
+					new_buf[y+1][x] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x] == 'R')
 						movement_result = -1;
@@ -327,24 +347,24 @@ int update_map(char robot_dir) {
 				/* balanced rocks slide */
 				else if(map.buf[y+1][x] == '*' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
 				{
-					map.buf[y][x] = ' ';
-					map.buf[y+1][x+1] = '*';
+					new_buf[y][x] = ' ';
+					new_buf[y+1][x+1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x+1] == 'R')
 						movement_result = -1;
 				}
 				else if(map.buf[y+1][x] == '*' && map.buf[y][x-1] == ' ' && map.buf[y+1][x-1] == ' ')
 				{
-					map.buf[y][x] = ' ';
-					map.buf[y+1][x-1] = '*';
+					new_buf[y][x] = ' ';
+					new_buf[y+1][x-1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x-1] == 'R')
 						movement_result = -1;
 				}
 				else if(map.buf[y+1][x] == '\\' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
 				{
-					map.buf[y][x] = ' ';
-					map.buf[y+1][x+1] = '*';
+					new_buf[y][x] = ' ';
+					new_buf[y+1][x+1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x+1] == 'R')
 						movement_result = -1;
@@ -353,9 +373,6 @@ int update_map(char robot_dir) {
 			}
 		}
 		
-	if(lambda_count != map.initial_lambdas - lLifter.lambdas)
-		fprintf(stderr, "incorrect lambda count\n");
-
     /* increase flooding if necessary */
     if ((map.flooding > 0) && (lLifter.steps % map.flooding)==0)
         map.water++;
@@ -365,9 +382,12 @@ int update_map(char robot_dir) {
         return -1;
 
 	/* if all the lambdas are collected, the lift opens */	
-	if(lambda_count == 0)
-		map.buf[lift_y][lift_x] = 'O';
-	
+	if(map.initial_lambdas==lLifter.lambdas)
+		new_buf[lift_y][lift_x] = 'O';
+
+    cleanup(map.buf,map.y_size);
+    map.buf=new_buf;
+    
 	return movement_result;	
 }	
 
