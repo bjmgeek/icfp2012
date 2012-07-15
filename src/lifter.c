@@ -241,7 +241,6 @@ int update_map(char robot_dir) {
 	int x,y,i;
 	char robot_target = '0';
     char **new_buf=NULL;
-    new_buf=copy_buf(map.buf,map.y_size,map.x_size);
 	
 	switch(robot_dir) {
 		case 'D': y_prime ++; break;
@@ -263,20 +262,20 @@ int update_map(char robot_dir) {
 	{
 		if(robot_dir == 'L' && map.buf[y_prime][x_prime-1] == ' ')
 		{
-			new_buf[y_prime][x_prime-1] = '*';
-			new_buf[lLifter.y][lLifter.x] = ' ';
+			map.buf[y_prime][x_prime-1] = '*';
+			map.buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
-			new_buf[lLifter.y][lLifter.x] = 'R';
+			map.buf[lLifter.y][lLifter.x] = 'R';
 			movement_result = 1;
 		}
 		else if(robot_dir == 'R' && map.buf[y_prime][x_prime+1] == ' ')
 		{
-			new_buf[y_prime][x_prime+1] = '*';
-			new_buf[lLifter.y][lLifter.x] = ' ';
+			map.buf[y_prime][x_prime+1] = '*';
+			map.buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
-			new_buf[lLifter.y][lLifter.x] = 'R';
+			map.buf[lLifter.y][lLifter.x] = 'R';
 			movement_result = 1;
 		}
 		else
@@ -289,11 +288,11 @@ int update_map(char robot_dir) {
 			if(map.tramps[i].source == map.buf[y_prime][x_prime])
 			{
 				robot_target = map.tramps[i].target;
-				new_buf[lLifter.y][lLifter.x] = ' ';
-				new_buf[y_prime][x_prime] = ' ';
+				map.buf[lLifter.y][lLifter.x] = ' ';
+				map.buf[y_prime][x_prime] = ' ';
 				lLifter.y = map.tramps[i].target_y;
 				lLifter.x = map.tramps[i].target_x;
-				new_buf[lLifter.y][lLifter.x] = 'R';
+				map.buf[lLifter.y][lLifter.x] = 'R';
 			}
 	}	
 	else if(map.buf[y_prime][x_prime] == 'O')
@@ -305,7 +304,7 @@ int update_map(char robot_dir) {
 	else if((robot_dir == 'D' || robot_dir=='U' || robot_dir=='R' || robot_dir=='L') &&
 			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
 	{
-		new_buf[lLifter.y][lLifter.x] = ' ';
+		map.buf[lLifter.y][lLifter.x] = ' ';
 		
 		/* if the robot is moving onto a lambda, pick it up */
 		if(map.buf[y_prime][x_prime] == '\\') {
@@ -314,9 +313,13 @@ int update_map(char robot_dir) {
 		
 		lLifter.y = y_prime;
 		lLifter.x = x_prime;
-		new_buf[lLifter.y][lLifter.x] = 'R';
+		map.buf[lLifter.y][lLifter.x] = 'R';
 		movement_result = 1;
 	}
+
+    /* done moving robot, subsequent map updates read from map.buf and 
+     * write to new_buf */
+    new_buf=copy_buf(map.buf,map.y_size,map.x_size);
 	
 	/** update map */
 	for(y = map.y_size -1; y >= 0; y--)
