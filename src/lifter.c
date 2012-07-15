@@ -16,13 +16,10 @@ typedef struct {
 
 typedef struct {
     char source;
-    int target;
+    char target;
+    int target_x;
+    int target_y;
 } trampoline;
-
-typedef struct {
-	int x;
-	int y;
-} point;
 
 typedef struct {
     char ** buf;
@@ -68,6 +65,31 @@ int count_lambdas() {
     return count;
 }
 
+void find_all_tramp_dest() {
+	int x, y, i;
+	
+	 for (y=0; y<map.y_size; y++)
+        for (x=0; x<map.x_size; x++)
+            if (map.buf[y][x]>='1' && map.buf[y][x] <= '9')
+				for(i = 0; i < map.num_tramps; i ++)
+					if(map.buf[y][x] == map.tramps[i].target)
+					{
+						map.tramps[i].target_x = x;
+						map.tramps[i].target_y = y;
+					}
+}
+
+trampoline find_tramp(char t) {
+	int i;
+	trampoline tramp;
+	
+	for(i = 0; i < map.num_tramps; i ++)
+		if(t == map.tramps[i].source)
+			tramp = map.tramps[i];
+			
+	return tramp;
+}
+
 /* parses a buffer containing all the lines of input and updates metadata
  * in the global world and robot variables */
 int get_metadata(char ** buf,int num_lines) {
@@ -89,7 +111,7 @@ int get_metadata(char ** buf,int num_lines) {
         }
         if (strstr(buf[i],"Trampoline") != NULL) {
             map.tramps=realloc(map.tramps,(1 + map.num_tramps) * sizeof (trampoline));
-            sscanf(buf[i],"Trampoline %c targets %d",&(map.tramps[map.num_tramps].source),&(map.tramps[map.num_tramps].target));
+            sscanf(buf[i],"Trampoline %c targets %c",&(map.tramps[map.num_tramps].source),&(map.tramps[map.num_tramps].target));
             map.num_tramps++;
             count++;
         }
@@ -106,6 +128,19 @@ int get_metadata(char ** buf,int num_lines) {
     return count;
 }
 
+/* find the robot on the map, and populate the global robot variable */
+void init_robot() {
+    int x,y;
+
+    lLifter.steps=0;
+    lLifter.lambdas=0;
+    for (x=0; x<map.x_size; x++)
+        for (y=0; y<map.y_size; y++)
+            if (map.buf[y][x]=='R') {
+                lLifter.x=x;
+                lLifter.y=y;
+            }
+}
 /* populate the global world variable, and allocate the array of 
  * strings for its buffer */
 void read_map(FILE *f) {
@@ -155,20 +190,8 @@ void read_map(FILE *f) {
         space_pad(map.buf[n],max_len);
     }
     map.initial_lambdas=count_lambdas();
-}
-
-/* find the robot on the map, and populate the global robot variable */
-void init_robot() {
-    int x,y;
-
-    lLifter.steps=0;
-    lLifter.lambdas=0;
-    for (x=0; x<map.x_size; x++)
-        for (y=0; y<map.y_size; y++)
-            if (map.buf[y][x]=='R') {
-                lLifter.x=x;
-                lLifter.y=y;
-            }
+	init_robot();
+	find_all_tramp_dest();
 }
 
 /* print the map so we can watch our robot get squashed by rocks */
@@ -183,7 +206,7 @@ int x;
     fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
     fprintf(stderr,"steps: %d\n",lLifter.steps);
     for (x=0; x<map.num_tramps; x++)
-        fprintf(stderr,"trampoline %c to target %d\n",map.tramps[x].source,map.tramps[x].target);
+        fprintf(stderr,"trampoline %c to target %c\n",map.tramps[x].source,map.tramps[x].target);
 }
 
 
@@ -198,7 +221,7 @@ int update_map(char robot_dir) {
 	int movement_result = 0;
 	int lambda_count = 0, lift_x = -1, lift_y = -1;
 	int x,y,i;
-	int robot_target = 0;
+	char robot_target = '0';
 	
 	switch(robot_dir) {
 		case 'D': y_prime ++; break;
@@ -244,7 +267,14 @@ int update_map(char robot_dir) {
 	{
 		for(i=0;i<map.num_tramps;i++)
 			if(map.tramps[i].source == map.buf[y_prime][x_prime])
+			{
 				robot_target = map.tramps[i].target;
+				map.buf[lLifter.y][lLifter.x] = ' ';
+				map.buf[y_prime][x_prime] = ' ';
+				lLifter.y = map.tramps[i].target_y;
+				lLifter.x = map.tramps[i].target_x;
+				map.buf[lLifter.y][lLifter.x] = 'R';
+			}
 	}	
 	else if(map.buf[y_prime][x_prime] == 'O')
 	{
@@ -284,8 +314,6 @@ int update_map(char robot_dir) {
 					if(map.tramps[i].source == map.buf[y][x] && map.tramps[i].target == robot_target)
 						map.buf[y][x] = ' ';
 			}	
-			else if(map.buf[y][x] == robot_target)
-				map.buf[y][x] = 'R';
 			else if(map.buf[y][x] == '*')
 			{	/* unsupported rocks fall */
 				if(map.buf[y+1][x] == ' ')
@@ -343,7 +371,6 @@ int update_map(char robot_dir) {
 	return movement_result;	
 }	
 
-/* keeps track of where it came from for more efficent searching */
 int search(int y, int x, int steps, char dir)
 {
 	int min_steps = LONGEST_PATH, test_steps;
@@ -358,6 +385,13 @@ int search(int y, int x, int steps, char dir)
 		/* if lambda or exit(& no lambdas left), return steps +1 */
 		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
 			return steps;
+			
+		/* if trampoline, "jump" */
+		if(map.buf[y][x] >= 'A' && map.buf[y][x] <= 'I')
+		{
+			trampoline tramp = find_tramp(map.buf[y][x]);
+			return search(tramp.target_y, tramp.target_x, steps, 'T');
+		}
 			
 		/* if lambda or exit nearby , return steps +2*/
 		if(map.buf[y][x+1] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x+1] == 'O') ||
@@ -511,7 +545,6 @@ int main(int argc,char **argv) {
         fprintf(stderr,"starting interactive mode\n");
         infile=fopen(argv[1],"r");
         read_map(infile);
-        init_robot();
         while (lLifter.steps < (map.x_size * map.y_size)) {
             print_map();
             move=move_robot();
@@ -532,7 +565,6 @@ int main(int argc,char **argv) {
         exit(EXIT_FAILURE);
     } else if (argc==1) {
         read_map(stdin);
-        init_robot();
         while (lLifter.steps < (map.x_size * map.y_size)) {
             move=move_robot();
             putchar(move);
