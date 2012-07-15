@@ -135,6 +135,7 @@ void init_robot() {
     lLifter.steps=0;
     lLifter.lambdas=0;
     lLifter.water_steps=0;
+    lLifter.waterproof=10;  /* 10 is the default if not specified */
     for (x=0; x<map.x_size; x++)
         for (y=0; y<map.y_size; y++)
             if (map.buf[y][x]=='R') {
@@ -150,6 +151,9 @@ void read_map(FILE *f) {
     size_t n=0;
     int line_no=0;
     int max_len=0;
+
+    map.flooding=0;  /* default per spec if not listed */
+    map.water=0;  /* default per spec if not listed */
 
     while (getline(&line,&n,f) != -1){
         /* replace newline with null */
@@ -169,11 +173,7 @@ void read_map(FILE *f) {
 
     /* check for metadata */
     n=get_metadata(buf,line_no);
-    if (n == 0) {
-        map.water=0;
-        map.flooding=0;
-        lLifter.waterproof=0;
-    } else 
+    if (n > 0)
         map.y_size -= (1+n);
 
     /* find max length of the map lines only */
