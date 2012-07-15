@@ -218,7 +218,7 @@ char** copy_buf (char **src,int n,int l) {
     char **dest;
     dest=malloc(n*sizeof (char*));
     for (i=0; i<n; i++) {
-        dest[i]=malloc(l*sizeof(char));
+        dest[i]=malloc((1+l)*sizeof(char));
         strcpy(dest[i],src[i]);
     }
     return dest;
@@ -229,6 +229,17 @@ void cleanup(char **buf,int lines){
     for (i=0; i<lines; i++)
         free(buf[i]);
     free(buf);
+}
+
+void shave() {
+    int x,y;
+    for (x=-1; x<2; x++)
+        for (y=-1; y<2; y++) {
+            if (((x + lLifter.x) > 0) && ((x + lLifter.x) < map.x_size) 
+                    && ((y + lLifter.y) > 0) && ((y + lLifter.y) < map.y_size)
+                    && map.buf[y][x]=='W')
+                map.buf[y][x]=' ';
+        }
 }
 
 /* updates map based on robot's movement
@@ -304,7 +315,7 @@ int update_map(char robot_dir) {
 	}
 	/* else if the robot is trying to move, and the move is valid move the robot */	
 	else if((robot_dir == 'D' || robot_dir=='U' || robot_dir=='R' || robot_dir=='L') &&
-			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\'))
+			(map.buf[y_prime][x_prime] == ' ' || map.buf[y_prime][x_prime] == '.' || map.buf[y_prime][x_prime] == '\\' || map.buf[y_prime][x_prime] == '!'))
 	{
 		map.buf[lLifter.y][lLifter.x] = ' ';
 		
@@ -312,12 +323,18 @@ int update_map(char robot_dir) {
 		if(map.buf[y_prime][x_prime] == '\\') {
 			lLifter.lambdas ++;		
         }
+
+		/* if the robot is moving onto a razor, pick it up */
+		if(map.buf[y_prime][x_prime] == '!') {
+			lLifter.razors++;		
+        }
 		
 		lLifter.y = y_prime;
 		lLifter.x = x_prime;
 		map.buf[lLifter.y][lLifter.x] = 'R';
 		movement_result = 1;
-	}
+	} else if (robot_dir == 'S')
+        shave();
 
     /* done moving robot, subsequent map updates read from map.buf and 
      * write to new_buf */
