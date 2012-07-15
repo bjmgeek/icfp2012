@@ -221,6 +221,7 @@ int x;
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
     fprintf(stderr,"water level: %d\n",map.water);
     fprintf(stderr,"water steps: %d out of %d\n",lLifter.water_steps, lLifter.waterproof);
+    fprintf(stderr,"robot has %d razors\n",lLifter.razors);
     fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
     fprintf(stderr,"steps: %d\n",lLifter.steps);
     for (x=0; x<map.num_tramps; x++)
