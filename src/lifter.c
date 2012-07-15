@@ -61,7 +61,7 @@ int count_lambdas() {
     int count=0;
     for (y=0; y<map.y_size; y++)
         for (x=0; x<map.x_size; x++)
-            if (map.buf[y][x]=='\\')
+            if (map.buf[y][x]=='\\' || map.buf[y][x]=='@')
                 count++;
     fprintf(stderr,"found %d lambdas in map\n",count);
     return count;
@@ -288,11 +288,11 @@ int update_map(char robot_dir) {
 	  || y_prime >= map.y_size || y_prime < 0)
 	  movement_result = 0;
 	/* if a robot is trying to move a rock, move rock if there is an empty space behind the rock */
-	else if(map.buf[y_prime][x_prime] == '*' && (robot_dir == 'L' || robot_dir == 'R'))
+	else if((map.buf[y_prime][x_prime] == '*' || map.buf[y_prime][x_prime] == '@') && (robot_dir == 'L' || robot_dir == 'R'))
 	{
 		if(robot_dir == 'L' && map.buf[y_prime][x_prime-1] == ' ')
 		{
-			map.buf[y_prime][x_prime-1] = '*';
+			map.buf[y_prime][x_prime-1] = map.buf[y_prime][x_prime];
 			map.buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
@@ -301,7 +301,7 @@ int update_map(char robot_dir) {
 		}
 		else if(robot_dir == 'R' && map.buf[y_prime][x_prime+1] == ' ')
 		{
-			map.buf[y_prime][x_prime+1] = '*';
+			map.buf[y_prime][x_prime+1] = map.buf[y_prime][x_prime];
 			map.buf[lLifter.y][lLifter.x] = ' ';
 			lLifter.y = y_prime;
 			lLifter.x = x_prime;
@@ -373,40 +373,52 @@ int update_map(char robot_dir) {
 					if(map.tramps[i].source == map.buf[y][x] && map.tramps[i].target == robot_target)
 						new_buf[y][x] = ' ';
 			}	
-			else if(map.buf[y][x] == '*')
+			else if(map.buf[y][x] == '*' || map.buf[y][x] == '@')
 			{	/* unsupported rocks fall */
 				if(map.buf[y+1][x] == ' ')
 				{
+					new_buf[y+1][x] = new_buf[y][x];
 					new_buf[y][x] = ' ';
-					new_buf[y+1][x] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x] == 'R')
 						movement_result = -1;
+					/* falling high order rocks can become lambdas */
+					if(map.buf[y][x] == '@' && map.buf[y+2][x] != ' ')
+						new_buf[y+1][x] = '\\';
 				}
 				/* balanced rocks slide */
 				else if(map.buf[y+1][x] == '*' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
 				{
+					new_buf[y+1][x+1] = new_buf[y][x];
 					new_buf[y][x] = ' ';
-					new_buf[y+1][x+1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x+1] == 'R')
 						movement_result = -1;
+					/* falling high order rocks can become lambdas */
+					if(map.buf[y][x] == '@' && map.buf[y+2][x+1] != ' ')
+						new_buf[y+1][x+1] = '\\';
 				}
 				else if(map.buf[y+1][x] == '*' && map.buf[y][x-1] == ' ' && map.buf[y+1][x-1] == ' ')
 				{
+					new_buf[y+1][x-1] = new_buf[y][x];
 					new_buf[y][x] = ' ';
-					new_buf[y+1][x-1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x-1] == 'R')
 						movement_result = -1;
+					/* falling high order rocks can become lambdas */
+					if(map.buf[y][x] == '@' && map.buf[y+2][x-1] != ' ')
+						new_buf[y+1][x-1] = '\\';
 				}
 				else if(map.buf[y+1][x] == '\\' && map.buf[y][x+1] == ' ' && map.buf[y+1][x+1] == ' ')
 				{
+					new_buf[y+1][x+1] = new_buf[y][x];
 					new_buf[y][x] = ' ';
-					new_buf[y+1][x+1] = '*';
 					/* falling rocks can kill robots */
 					if(map.buf[y+2][x+1] == 'R')
 						movement_result = -1;
+					/* falling high order rocks can become lambdas */
+					if(map.buf[y][x] == '@' && map.buf[y+2][x+1] != ' ')
+						new_buf[y+1][x+1] = '\\';
 				}
 				
 			} else if (map.buf[y][x] == 'W') {
@@ -458,7 +470,7 @@ int search(int y, int x, int steps, char dir, int razors)
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
 	/* if safe location or not too many steps(more than LONGEST_PATH), continue searching */
-	if(map.buf[y][x] != '#' && map.buf[y][x] != 'W' && map.buf[y][x] != 'L' && map.buf[y][x] != '*' && steps < LONGEST_PATH )
+	if(map.buf[y][x] != '#' && map.buf[y][x] != 'W' && map.buf[y][x] != 'L' && map.buf[y][x] != '*' && map.buf[y][x] != '@' && steps < LONGEST_PATH )
 	{
 		steps++;
 		
@@ -501,7 +513,7 @@ int search(int y, int x, int steps, char dir, int razors)
 	
 	/* if unable to move, check to see if there is a rock here that can be moved 
 	 * without blocking the lift */
-	if(min_steps == LONGEST_PATH && map.buf[y][x] == '*')
+	if(min_steps == LONGEST_PATH && (map.buf[y][x] == '*' || map.buf[y][x] == '@'))
 	{
 		steps++;
 		if(dir == 'L' && map.buf[y][x-1] == ' ' && map.buf[y][x-2] !='O' && map.buf[y][x-2] != 'L'){
