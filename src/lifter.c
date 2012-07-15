@@ -415,67 +415,89 @@ int update_map(char robot_dir) {
 	return movement_result;	
 }	
 
-int search(int y, int x, int steps, char dir)
+int search(int y, int x, int steps, char dir, int razors)
 {
 	int min_steps = LONGEST_PATH, test_steps;
 	
 	/*fprintf(stderr,"checking dir %c there is a %c here\n",dir, map.buf[y][x]);*/
 	
 	/* if safe location or not too many steps(more than LONGEST_PATH), continue searching */
-	if(map.buf[y][x] != '#' && map.buf[y][x] != 'L' && map.buf[y][x] != '*' && steps < LONGEST_PATH )
+	if(map.buf[y][x] != '#' && map.buf[y][x] != 'W' && map.buf[y][x] != 'L' && map.buf[y][x] != '*' && steps < LONGEST_PATH )
 	{
 		steps++;
 		
 		/* if lambda or exit(& no lambdas left), return steps +1 */
-		if(map.buf[y][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
+		if(map.buf[y][x] == '\\' || map.buf[y][x] == '!' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x] == 'O'))
 			return steps;
 			
 		/* if trampoline, "jump" */
 		if(map.buf[y][x] >= 'A' && map.buf[y][x] <= 'I')
 		{
 			trampoline tramp = find_tramp(map.buf[y][x]);
-			return search(tramp.target_y, tramp.target_x, steps, 'T');
+			return search(tramp.target_y, tramp.target_x, steps, 'T', razors);
 		}
 			
 		/* if lambda or exit nearby , return steps +2*/
-		if(map.buf[y][x+1] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x+1] == 'O') ||
-			map.buf[y][x-1] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x-1] == 'O') ||
-			map.buf[y-1][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y-1][x] == 'O') ||
-			(map.buf[y-1][x] != '*' && (map.buf[y+1][x] == '\\' || (map.initial_lambdas == lLifter.lambdas && map.buf[y+1][x] == 'O'))))
+		if(map.buf[y][x+1] == '\\' || map.buf[y][x] == '!' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x+1] == 'O') ||
+			map.buf[y][x-1] == '\\' || map.buf[y][x] == '!' || (map.initial_lambdas == lLifter.lambdas && map.buf[y][x-1] == 'O') ||
+			map.buf[y-1][x] == '\\' || map.buf[y][x] == '!' || (map.initial_lambdas == lLifter.lambdas && map.buf[y-1][x] == 'O') ||
+			(map.buf[y-1][x] != '*' && (map.buf[y+1][x] == '\\' || map.buf[y][x] == '!' || (map.initial_lambdas == lLifter.lambdas && map.buf[y+1][x] == 'O'))))
 			return steps+1;
 		/* else search */
 		/* recursively check all 4 directions for closest safe lambda or exit*/
 		if(dir != 'L' && min_steps > steps+1) {
-			test_steps = search(y, x+1, steps, 'R');
+			test_steps = search(y, x+1, steps, 'R', razors);
 			if (test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'R' && min_steps > steps+1) {
-			test_steps = search(y, x-1, steps, 'L');
+			test_steps = search(y, x-1, steps, 'L', razors);
 			if (test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'D' && min_steps > steps+1) {
-			test_steps = search(y-1, x, steps, 'U');
+			test_steps = search(y-1, x, steps, 'U', razors);
 			if (test_steps < min_steps) min_steps = test_steps;
 		}
 		if(dir != 'U' && min_steps > steps+1 && map.buf[y-1][x] != '*') {
-			test_steps = search(y+1, x, steps, 'D');
+			test_steps = search(y+1, x, steps, 'D', razors);
 			if (test_steps < min_steps) min_steps = test_steps;
 		}
 	}
 	
 	/* if unable to move, check to see if there is a rock here that can be moved 
-	 * without blocking anything */
+	 * without blocking the lift */
 	if(min_steps == LONGEST_PATH && map.buf[y][x] == '*')
 	{
 		steps++;
 		if(dir == 'L' && map.buf[y][x-1] == ' ' && map.buf[y][x-2] !='O' && map.buf[y][x-2] != 'L'){
-			min_steps = search(y, x-1, steps, 'L');
+			min_steps = search(y, x-1, steps, 'L', razors);
 		}
 		else if(dir == 'R' && map.buf[y][x+1] == ' ' && map.buf[y][x+2] !='O' && map.buf[y][x+2] != 'L'){
-			min_steps = search(y, x+1, steps, 'R');
+			min_steps = search(y, x+1, steps, 'R', razors);
 		}
 		else
 			return LONGEST_PATH;
+	}
+	
+	/* if unable to move, check to see if there is a beard here that can be shaved */
+	if(min_steps == LONGEST_PATH && map.buf[y][x] == 'W' && razors > 0)
+	{
+		steps++;
+		if(dir != 'L' && min_steps > steps+1) {
+			test_steps = search(y, x+1, steps, 'R', razors-1);
+			if (test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'R' && min_steps > steps+1) {
+			test_steps = search(y, x-1, steps, 'L', razors-1);
+			if (test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'D' && min_steps > steps+1) {
+			test_steps = search(y-1, x, steps, 'U', razors-1);
+			if (test_steps < min_steps) min_steps = test_steps;
+		}
+		if(dir != 'U' && min_steps > steps+1 && map.buf[y-1][x] != '*') {
+			test_steps = search(y+1, x, steps, 'D', razors-1);
+			if (test_steps < min_steps) min_steps = test_steps;
+		}
 	}
 	
 	return min_steps;
@@ -505,22 +527,42 @@ char move_robot()
 	}
 	
 	/* recursively check all 4 directions for closest safe lambda or exit*/
-	R = search(lLifter.y, lLifter.x+1, 0, 'R');
-	L = search(lLifter.y, lLifter.x-1, 0, 'L');
-	U = search(lLifter.y-1, lLifter.x, 0, 'U');
+	R = search(lLifter.y, lLifter.x+1, 0, 'R', lLifter.razors);
+	L = search(lLifter.y, lLifter.x-1, 0, 'L', lLifter.razors);
+	U = search(lLifter.y-1, lLifter.x, 0, 'U', lLifter.razors);
 	if(map.buf[lLifter.y-1][lLifter.x] != '*')
-		D = search(lLifter.y+1, lLifter.x, 0, 'D');
+		D = search(lLifter.y+1, lLifter.x, 0, 'D', lLifter.razors);
 	
 	/* fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D); */
 	
 	if(R < LONGEST_PATH && R <= U && R <= D && R <= L)
-		return 'R';
+	{
+		if(map.buf[lLifter.y][lLifter.x+1] == 'W')
+			return 'S';
+		else
+			return 'R';
+	}
 	if(L < LONGEST_PATH && L <= U && L <= D)
-		return 'L';
+	{
+		if(map.buf[lLifter.y][lLifter.x-1] == 'W')
+			return 'S';
+		else
+			return 'L';
+		}
 	if(U < LONGEST_PATH && U <= D)
-		return 'U';
+	{
+		if(map.buf[lLifter.y-1][lLifter.x] == 'W')
+			return 'S';
+		else
+			return 'U';
+		}
 	if(D < LONGEST_PATH)
-		return 'D';
+	{
+		if(map.buf[lLifter.y+1][lLifter.x] == 'W')
+			return 'S';
+		else
+			return 'D';
+		}
 		
 	/* if robot still can't move check for falling rocks */
 	for(y = 0; y < map.y_size; y++)
