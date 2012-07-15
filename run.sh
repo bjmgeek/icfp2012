@@ -1,5 +1,14 @@
 #!/bin/sh
-./lifter < $1 2>/dev/null &
+
+function trapped {
+	echo got SIGCHLD $0
+	exit
+}
+
+
+trap 'trapped' SIGCHLD
+
+./lifter < $1 &
 pid=$!
 sleep 150
 echo 150 seconds elapsed, sending SIGINT
