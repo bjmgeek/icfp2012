@@ -475,7 +475,7 @@ char move_robot()
 	if(map.buf[lLifter.y-1][lLifter.x] != '*')
 		D = search(lLifter.y+1, lLifter.x, 0, 'D');
 	
-	/*fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D);*/
+	/* fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D); */
 	
 	if(R < LONGEST_PATH && R <= U && R <= D && R <= L)
 		return 'R';
@@ -485,12 +485,6 @@ char move_robot()
 		return 'U';
 	if(D < LONGEST_PATH)
 		return 'D';
-		
-	/* if the robot can't move, check to see if it can move a rock out of the way to open a path */
-	if(map.buf[lLifter.y][lLifter.x+1] == '*' && map.buf[lLifter.y][lLifter.x+2] == ' ')
-		return 'R';
-	if(map.buf[lLifter.y][lLifter.x-1] == '*' && map.buf[lLifter.y][lLifter.x-2] == ' ')
-		return 'L';
 		
 	/* if robot still can't move check for falling rocks */
 	for(y = 0; y < map.y_size; y++)
