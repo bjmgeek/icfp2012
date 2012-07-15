@@ -250,13 +250,16 @@ void cleanup(char **buf,int lines){
 
 void shave() {
     int x,y;
-    for (x=-1; x<2; x++)
+    for (x=-1; x<2; x++) {
         for (y=-1; y<2; y++) {
             if (((x + lLifter.x) > 0) && ((x + lLifter.x) < map.x_size) 
                     && ((y + lLifter.y) > 0) && ((y + lLifter.y) < map.y_size)
-                    && map.buf[y][x]=='W')
-                map.buf[y][x]=' ';
+                    && map.buf[y+lLifter.y][x+lLifter.x]=='W') {
+                map.buf[y+lLifter.y][x+lLifter.x]=' ';
+            } 
         }
+    }
+    lLifter.razors--;
 }
 
 /* updates map based on robot's movement
@@ -429,11 +432,9 @@ int update_map(char robot_dir) {
                     beards[y][x]=map.growth-1;
                     for (i=-1; i<2; i++)
                         for (j=-1; j<2; j++) {
-                            if (((i + lLifter.x) > 0) && ((i + lLifter.x) < map.x_size) 
-                                    && ((j + lLifter.y) > 0) && ((j + lLifter.y) < map.y_size)
-                                    && map.buf[j][i]==' ') {
-                                new_buf[j][i]='W';
-                                beards[j][i]=map.growth-1;
+                            if (((i + x) > 0) && ((i + x) < map.x_size) && ((j + y) > 0) && ((j + y) < map.y_size) && map.buf[j+y][i+x]==' ') {
+                                new_buf[j+y][i+x]='W';
+                                beards[j+y][i+x]=map.growth-1;
                             }
                         }
                 }
