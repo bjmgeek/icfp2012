@@ -134,7 +134,7 @@ void init_robot() {
 
     lLifter.steps=0;
     lLifter.lambdas=0;
-    lLifter.lambdas=10;  /* 10 is the default if not specified */
+    lLifter.waterproof=10;  /* 10 is the default if not specified */
     for (x=0; x<map.x_size; x++)
         for (y=0; y<map.y_size; y++)
             if (map.buf[y][x]=='R') {
