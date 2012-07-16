@@ -249,13 +249,15 @@ void cleanup(char **buf,int lines){
 
 void shave() {
     int x,y;
-    for (x=-1; x<2; x++)
+    for (x=-1; x<2; x++) {
         for (y=-1; y<2; y++) {
             if (((x + lLifter.x) > 0) && ((x + lLifter.x) < map.x_size) 
                     && ((y + lLifter.y) > 0) && ((y + lLifter.y) < map.y_size)
-                    && map.buf[y][x]=='W')
-                map.buf[y][x]=' ';
+                    && map.buf[y+lLifter.y][x+lLifter.x]=='W') {
+                map.buf[y+lLifter.y][x+lLifter.x]=' ';
+            } 
         }
+    }
 }
 
 /* updates map based on robot's movement
