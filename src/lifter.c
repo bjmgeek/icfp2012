@@ -134,6 +134,7 @@ void init_robot() {
 
     lLifter.steps=0;
     lLifter.lambdas=0;
+    lLifter.water_steps=0;
     lLifter.waterproof=10;  /* 10 is the default if not specified */
     for (x=0; x<map.x_size; x++)
         for (y=0; y<map.y_size; y++)
@@ -203,6 +204,7 @@ int x;
     }
     fprintf(stderr,"robot position (x,y): %d,%d\n",lLifter.x,lLifter.y);
     fprintf(stderr,"water level: %d\n",map.water);
+    fprintf(stderr,"water steps: %d out of %d\n",lLifter.water_steps, lLifter.waterproof);
     fprintf(stderr,"robot has %d lambdas out of %d\n",lLifter.lambdas,map.initial_lambdas);
     fprintf(stderr,"steps: %d\n",lLifter.steps);
     for (x=0; x<map.num_tramps; x++)
@@ -398,6 +400,8 @@ int update_map(char robot_dir) {
         map.water++;
     if (lLifter.y >= (map.y_size - map.water))
         lLifter.water_steps++;
+    else
+		lLifter.water_steps = 0;
     if (lLifter.water_steps > lLifter.waterproof)
         return -1;
 
@@ -488,6 +492,18 @@ int search(int y, int x, int steps, char dir)
 char move_robot()
 {
 	int U = LONGEST_PATH, D = LONGEST_PATH, L = LONGEST_PATH, R = LONGEST_PATH, x, y;
+	
+	/* if under water and out of waterproofing 
+	 * pop up if at the surface, otherwise abort */
+	if(lLifter.water_steps == lLifter.waterproof)
+	{
+		if((map.water == map.y_size - lLifter.y) && 
+			(map.buf[lLifter.y-1][lLifter.x] == '.' || map.buf[lLifter.y-1][lLifter.x] == ' '))
+			return 'U';
+		else
+			return 'A';
+	}
+	
 	/* recursively check all 4 directions for closest safe lambda or exit*/
 	R = search(lLifter.y, lLifter.x+1, 0, 'R');
 	L = search(lLifter.y, lLifter.x-1, 0, 'L');
