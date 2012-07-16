@@ -216,7 +216,7 @@ char** copy_buf (char **src,int n,int l) {
     char **dest;
     dest=malloc(n*sizeof (char*));
     for (i=0; i<n; i++) {
-        dest[i]=malloc(l*sizeof(char));
+        dest[i]=malloc((1+l)*sizeof(char));
         strcpy(dest[i],src[i]);
     }
     return dest;
