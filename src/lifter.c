@@ -3,6 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <limits.h>
 
 typedef struct {
     int x;
@@ -37,6 +38,7 @@ typedef struct {
 /* global variables */
 robot lLifter;
 world map;
+int **beards;
 const int LONGEST_PATH=21;
 
 /* calculate the score of a success */
@@ -151,6 +153,7 @@ void read_map(FILE *f) {
     size_t n=0;
     int line_no=0;
     int max_len=0;
+    int x,y;
 
     map.flooding=0;  /* default per spec if not listed */
     map.water=0;  /* default per spec if not listed */
@@ -190,6 +193,19 @@ void read_map(FILE *f) {
         map.buf[n]=realloc(map.buf[n],max_len * sizeof (char*));
         space_pad(map.buf[n],max_len);
     }
+
+    /* initialize beards */
+    beards=calloc(map.y_size,sizeof (int*));
+    for (y=0; y<map.y_size; y++) {
+        beards[y]=calloc(map.x_size, sizeof (int));
+        for (x=0; x<map.x_size; x++){
+            if (map.buf[y][x]=='W')
+                beards[y][x]=map.growth-1;
+            else
+                beards[y][x]=INT_MAX;
+        }
+    }
+
     map.initial_lambdas=count_lambdas();
 	init_robot();
 	find_all_tramp_dest();
@@ -251,7 +267,7 @@ int update_map(char robot_dir) {
 	int x_prime = lLifter.x, y_prime=lLifter.y;
 	int movement_result = 0;
 	int lift_x = -1, lift_y = -1;
-	int x,y,i;
+	int x,y,i,j;
 	char robot_target = '0';
     char **new_buf=NULL;
 	
@@ -392,7 +408,24 @@ int update_map(char robot_dir) {
 						movement_result = -1;
 				}
 				
-			}
+			} else if (map.buf[y][x] == 'W') {
+                /* beard growth */
+                if (beards[y][x] > 0)
+                    beards[y][x]--;
+                else {
+                    beards[y][x]=map.growth-1;
+                    for (i=-1; i<2; i++)
+                        for (j=-1; j<2; j++) {
+                            if (((i + lLifter.x) > 0) && ((i + lLifter.x) < map.x_size) 
+                                    && ((j + lLifter.y) > 0) && ((j + lLifter.y) < map.y_size)
+                                    && map.buf[j][i]==' ') {
+                                new_buf[j][i]='W';
+                                beards[j][i]=map.growth-1;
+                            }
+                        }
+                }
+
+            }
 		}
 		
     /* increase flooding if necessary */
@@ -408,6 +441,8 @@ int update_map(char robot_dir) {
 	/* if all the lambdas are collected, the lift opens */	
 	if(map.initial_lambdas==lLifter.lambdas)
 		new_buf[lift_y][lift_x] = 'O';
+
+	
 
     cleanup(map.buf,map.y_size);
     map.buf=new_buf;
