@@ -579,7 +579,7 @@ char move_robot()
 	R = search(lLifter.y, lLifter.x+1, 0, 'R', lLifter.razors);
 	L = search(lLifter.y, lLifter.x-1, 0, 'L', lLifter.razors);
 	U = search(lLifter.y-1, lLifter.x, 0, 'U', lLifter.razors);
-	if(map.buf[lLifter.y-1][lLifter.x] != '*')
+	if((map.buf[lLifter.y-1][lLifter.x] != '*') && (map.buf[lLifter.y-1][lLifter.x] != '@'))
 		D = search(lLifter.y+1, lLifter.x, 0, 'D', lLifter.razors);
 	
 	/* fprintf(stderr,"R has a lambda in %i steps, L has one in %i steps, U has one in %i steps, D has one in %i steps\n",R, L, U, D); */
